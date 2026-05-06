@@ -564,8 +564,10 @@ elev_abs_min = round(min(elevs_ft))
 elev_abs_max = round(max(elevs_ft))
 print(f"  Elevation: {elev_abs_min}–{elev_abs_max} ft absolute, +{elev_gain} ft gain")
 
-dist_js = "[" + ",".join(f"{d:.3f}" for d in cum_mi) + "]"
-elev_js  = "[" + ",".join(str(e) for e in elevs_rel) + "]"
+dist_js   = "[" + ",".join(f"{d:.3f}" for d in cum_mi) + "]"
+elev_js   = "[" + ",".join(str(e) for e in elevs_rel) + "]"
+coords_js = "[" + ",".join(f"[{la:.6f},{lo:.6f}]" for la, lo in sampled) + "]"
+map_var   = m.get_name()
 
 # ── Combined collapsible left sidebar (legend + elevation) ────────────────────
 sidebar_html = f"""
@@ -655,12 +657,27 @@ sidebar_html = f"""
     btn.textContent = '◀';
   }}
 
-  // Auto-collapse on small screens
   if (window.innerWidth < 600) {{ collapse(); }}
+  btn.addEventListener('click', function() {{ sb.dataset.c === '1' ? expand() : collapse(); }});
 
-  btn.addEventListener('click', function() {{
-    sb.dataset.c === '1' ? expand() : collapse();
-  }});
+  // Map dot that tracks elevation profile hover
+  var leafletMap = window['{map_var}'];
+  var coords = {coords_js};
+  var hoverDot = L.circleMarker([0, 0], {{
+    radius: 8, color: '#fff', weight: 2.5,
+    fillColor: '#2980B9', fillOpacity: 0, opacity: 0,
+    interactive: false
+  }}).addTo(leafletMap);
+
+  function showDot(idx) {{
+    hoverDot.setLatLng(coords[idx]);
+    hoverDot.setStyle({{ opacity: 1, fillOpacity: 0.9 }});
+  }}
+  function hideDot() {{
+    hoverDot.setStyle({{ opacity: 0, fillOpacity: 0 }});
+  }}
+
+  document.getElementById('elevChart').addEventListener('mouseleave', hideDot);
 
   var dists = {dist_js};
   var elevs = {elev_js};
@@ -683,6 +700,10 @@ sidebar_html = f"""
       responsive: true,
       maintainAspectRatio: false,
       animation: false,
+      onHover: function(event, activeEls) {{
+        if (activeEls.length) {{ showDot(activeEls[0].index); }}
+        else {{ hideDot(); }}
+      }},
       plugins: {{
         legend: {{ display: false }},
         tooltip: {{
@@ -700,8 +721,7 @@ sidebar_html = f"""
       scales: {{
         x: {{
           ticks: {{
-            maxTicksLimit: 6,
-            font: {{ size: 9 }},
+            maxTicksLimit: 6, font: {{ size: 9 }},
             callback: function(val, i) {{
               return typeof dists[i] === 'number' ? dists[i].toFixed(1) + ' mi' : '';
             }}
@@ -710,8 +730,7 @@ sidebar_html = f"""
         }},
         y: {{
           ticks: {{
-            font: {{ size: 9 }},
-            maxTicksLimit: 4,
+            font: {{ size: 9 }}, maxTicksLimit: 4,
             callback: function(v) {{ return (v >= 0 ? '+' : '') + v + ' ft'; }}
           }},
           grid: {{ color: 'rgba(0,0,0,0.06)' }}
