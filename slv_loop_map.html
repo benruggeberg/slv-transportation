@@ -1,0 +1,1026 @@
+<!DOCTYPE html>
+<html>
+<head>
+    
+    <meta http-equiv="content-type" content="text/html; charset=UTF-8" />
+    <script src="https://cdn.jsdelivr.net/npm/leaflet@1.9.3/dist/leaflet.js"></script>
+    <script src="https://code.jquery.com/jquery-3.7.1.min.js"></script>
+    <script src="https://cdn.jsdelivr.net/npm/bootstrap@5.2.2/dist/js/bootstrap.bundle.min.js"></script>
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/Leaflet.awesome-markers/2.0.2/leaflet.awesome-markers.js"></script>
+    <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/leaflet@1.9.3/dist/leaflet.css"/>
+    <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/bootstrap@5.2.2/dist/css/bootstrap.min.css"/>
+    <link rel="stylesheet" href="https://netdna.bootstrapcdn.com/bootstrap/3.0.0/css/bootstrap-glyphicons.css"/>
+    <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/@fortawesome/fontawesome-free@6.2.0/css/all.min.css"/>
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/Leaflet.awesome-markers/2.0.2/leaflet.awesome-markers.css"/>
+    <link rel="stylesheet" href="https://cdn.jsdelivr.net/gh/python-visualization/folium/folium/templates/leaflet.awesome.rotate.min.css"/>
+    
+            <meta name="viewport" content="width=device-width,
+                initial-scale=1.0, maximum-scale=1.0, user-scalable=no" />
+            <style>
+                #map_33bae57669c7b8e5607176eb3414ef77 {
+                    position: relative;
+                    width: 100.0%;
+                    height: 100.0%;
+                    left: 0.0%;
+                    top: 0.0%;
+                }
+                .leaflet-container { font-size: 1rem; }
+            </style>
+
+            <style>html, body {
+                width: 100%;
+                height: 100%;
+                margin: 0;
+                padding: 0;
+            }
+            </style>
+
+            <style>#map {
+                position:absolute;
+                top:0;
+                bottom:0;
+                right:0;
+                left:0;
+                }
+            </style>
+
+            <script>
+                L_NO_TOUCH = false;
+                L_DISABLE_3D = false;
+            </script>
+
+        
+    <script src="https://cdn.jsdelivr.net/npm/leaflet.fullscreen@3.0.0/Control.FullScreen.min.js"></script>
+    <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/leaflet.fullscreen@3.0.0/Control.FullScreen.css"/>
+    <script src="https://cdn.jsdelivr.net/gh/ljagis/leaflet-measure@2.1.7/dist/leaflet-measure.min.js"></script>
+    <link rel="stylesheet" href="https://cdn.jsdelivr.net/gh/ljagis/leaflet-measure@2.1.7/dist/leaflet-measure.min.css"/>
+</head>
+<body>
+    
+    
+<style>
+  #slv-sidebar {
+    position:fixed;left:0;bottom:30px;z-index:9999;
+    display:flex;align-items:flex-start;
+    transition:transform 0.3s ease;
+  }
+  #slv-panels {
+    display:flex;flex-direction:column;gap:8px;
+    width:min(430px, calc(100vw - 28px));
+  }
+  .slv-panel {
+    background:#fff;
+    border:2px solid #444;border-left:none;border-radius:0 7px 7px 0;
+    font-family:Arial,sans-serif;
+    box-shadow:3px 3px 10px rgba(0,0,0,0.35);
+  }
+  #slv-legend {
+    padding:12px 14px 10px;
+    max-height:min(45vh,280px);overflow-y:auto;
+  }
+  #slv-elev {
+    padding:8px 12px 8px;
+  }
+  #slv-toggle {
+    flex-shrink:0;margin-top:20px;width:24px;height:48px;
+    background:#fff;border:2px solid #444;border-left:none;
+    border-radius:0 6px 6px 0;cursor:pointer;
+    font-size:13px;line-height:1;padding:0;
+    box-shadow:3px 3px 8px rgba(0,0,0,0.3);
+  }
+  /* Mobile: hide elevation chart behind its own toggle to save space */
+  @media (max-width:600px) {
+    #slv-legend { padding:8px 10px 8px; max-height:min(38vh,220px); }
+    #slv-elev   { padding:6px 10px 6px; }
+    #elev-title { font-size:11px; }
+    #elev-meta  { display:none; }
+  }
+</style>
+
+<div id="slv-sidebar">
+  <div id="slv-panels">
+    <div id="slv-legend" class="slv-panel">
+      <b style="font-size:13px;">SLV Multi-Use Path Loop Proposal</b><br>
+      <span style="font-size:10px;color:#666;">
+        San Lorenzo Valley, Santa Cruz County, CA &nbsp;·&nbsp; ~7.6 mi
+      </span>
+      <hr style="margin:6px 0;border-color:#ccc;">
+      <div style="display:flex;align-items:center;margin:2px 0;"><span style="width:30px;height:5px;display:inline-block;margin-right:7px;background:#C0392B;"></span><span style="font-size:11px;">1. Graham Hill Rd</span></div><div style="display:flex;align-items:center;margin:2px 0;"><span style="width:30px;height:5px;display:inline-block;margin-right:7px;background:#E67E22;"></span><span style="font-size:11px;">2. Hwy 9 — Caltrans 05-1M400 (in progress)</span></div><div style="display:flex;align-items:center;margin:2px 0;"><span style="width:30px;height:5px;display:inline-block;margin-right:7px;background:#F1C40F;"></span><span style="font-size:11px;">3. Hwy 9 to Highlands Park</span></div><div style="display:flex;align-items:center;margin:2px 0;"><span style="width:30px;height:5px;display:inline-block;margin-right:7px;background:#27AE60;"></span><span style="font-size:11px;">4. Highlands County Park — park path to river</span></div><div style="display:flex;align-items:center;margin:2px 0;"><span style="width:30px;height:0;display:inline-block;margin-right:7px;border-top:5px dashed #2980B9;"></span><span style="font-size:11px;">5. Proposed Pedestrian / Bicycle Bridge</span></div><div style="display:flex;align-items:center;margin:2px 0;"><span style="width:30px;height:5px;display:inline-block;margin-right:7px;background:#16A085;"></span><span style="font-size:11px;">6. Maple Ave and Glen Arbor Rd</span></div><div style="display:flex;align-items:center;margin:2px 0;"><span style="width:30px;height:5px;display:inline-block;margin-right:7px;background:#8E44AD;"></span><span style="font-size:11px;">7. Quail Hollow Rd</span></div><div style="display:flex;align-items:center;margin:2px 0;"><span style="width:30px;height:0;display:inline-block;margin-right:7px;border-top:5px dashed #795548;"></span><span style="font-size:11px;">8. Historic SP Olympia Branch (proposed rail trail)</span></div>
+      <hr style="margin:5px 0;border-color:#ccc;">
+      <span style="font-size:10px;color:#888;">
+        &#9733; Key destinations &nbsp;|&nbsp; - - proposed bridge &amp; rail trail
+      </span>
+    </div>
+    <div id="slv-elev" class="slv-panel">
+      <div style="display:flex;justify-content:space-between;align-items:baseline;margin-bottom:4px;">
+        <b id="elev-title" style="font-size:12px;">Elevation Profile</b>
+        <span id="elev-meta" style="font-size:10px;color:#666;">
+          256–679 ft &nbsp;·&nbsp; +476 ft gain
+        </span>
+      </div>
+      <div style="position:relative;height:80px;">
+        <canvas id="elevChart"></canvas>
+      </div>
+    </div>
+  </div>
+  <button id="slv-toggle">◀</button>
+</div>
+
+<script src="https://cdn.jsdelivr.net/npm/chart.js@4.4.0/dist/chart.umd.min.js"></script>
+<script>
+(function() {
+  var sb  = document.getElementById('slv-sidebar');
+  var pan = document.getElementById('slv-panels');
+  var btn = document.getElementById('slv-toggle');
+
+  function collapse() {
+    sb.style.transform = 'translateX(-' + pan.offsetWidth + 'px)';
+    sb.dataset.c = '1';
+    btn.textContent = '▶';
+  }
+  function expand() {
+    sb.style.transform = '';
+    sb.dataset.c = '';
+    btn.textContent = '◀';
+  }
+
+  // Auto-collapse on small screens
+  if (window.innerWidth < 600) { collapse(); }
+
+  btn.addEventListener('click', function() {
+    sb.dataset.c === '1' ? expand() : collapse();
+  });
+
+  var dists = [0.000,0.068,0.175,0.287,0.373,0.417,0.450,0.497,0.551,0.593,0.614,0.657,0.769,0.818,0.955,1.024,1.103,1.137,1.187,1.263,1.317,1.392,1.453,1.566,1.614,1.658,1.690,1.726,1.742,1.776,1.799,1.861,1.877,1.955,1.986,2.017,2.051,2.135,2.172,2.242,2.295,2.372,2.468,2.511,2.552,2.579,2.617,2.655,2.709,2.731,2.777,2.845,2.895,2.998,3.112,3.216,3.264,3.312,3.355,3.516,3.585,3.741,3.793,3.930,3.975,4.042,4.128,4.179,4.228,4.293,4.410,4.553,4.644,4.770,4.890,5.049,5.341,5.379,5.470,5.491,5.565,5.605,5.712,5.767,5.858,5.899,5.932,6.009,6.061,6.086,6.143,6.176,6.212,6.264,6.315,6.365,6.432,6.504,6.616,6.729,6.877,6.956,7.029,7.218,7.313,7.357,7.442];
+  var elevs = [0,-5,-8,-10,-11,-17,-11,-10,-7,-4,3,12,18,24,24,26,28,34,42,44,44,47,48,50,50,50,53,55,57,61,64,69,74,73,73,70,67,63,72,82,101,121,123,125,140,142,143,131,119,93,69,65,61,53,63,69,76,85,102,125,149,173,203,230,258,285,313,322,324,331,325,305,271,236,210,181,161,141,118,107,96,94,91,91,90,94,98,94,90,87,90,93,82,74,68,58,57,56,55,48,47,52,55,54,58,58,59];
+  var ctx = document.getElementById('elevChart').getContext('2d');
+  new Chart(ctx, {
+    type: 'line',
+    data: {
+      labels: dists,
+      datasets: [{
+        data: elevs,
+        fill: true,
+        backgroundColor: 'rgba(76,175,80,0.20)',
+        borderColor: 'rgba(46,125,50,0.85)',
+        borderWidth: 1.5,
+        pointRadius: 0,
+        tension: 0.5
+      }]
+    },
+    options: {
+      responsive: true,
+      maintainAspectRatio: false,
+      animation: false,
+      plugins: {
+        legend: { display: false },
+        tooltip: {
+          mode: 'index',
+          intersect: false,
+          callbacks: {
+            title: function(items) { return dists[items[0].dataIndex].toFixed(2) + ' mi'; },
+            label: function(item) {
+              var v = item.parsed.y;
+              return (v >= 0 ? '+' : '') + v + ' ft';
+            }
+          }
+        }
+      },
+      scales: {
+        x: {
+          ticks: {
+            maxTicksLimit: 6,
+            font: { size: 9 },
+            callback: function(val, i) {
+              return typeof dists[i] === 'number' ? dists[i].toFixed(1) + ' mi' : '';
+            }
+          },
+          grid: { color: 'rgba(0,0,0,0.06)' }
+        },
+        y: {
+          ticks: {
+            font: { size: 9 },
+            maxTicksLimit: 4,
+            callback: function(v) { return (v >= 0 ? '+' : '') + v + ' ft'; }
+          },
+          grid: { color: 'rgba(0,0,0,0.06)' }
+        }
+      }
+    }
+  });
+})();
+</script>
+    
+            <div class="folium-map" id="map_33bae57669c7b8e5607176eb3414ef77" ></div>
+        
+</body>
+<script>
+    
+    
+            var map_33bae57669c7b8e5607176eb3414ef77 = L.map(
+                "map_33bae57669c7b8e5607176eb3414ef77",
+                {
+                    center: [37.068, -122.072],
+                    crs: L.CRS.EPSG3857,
+                    ...{
+  "zoom": 14,
+  "zoomControl": true,
+  "preferCanvas": false,
+}
+
+                }
+            );
+            L.control.scale().addTo(map_33bae57669c7b8e5607176eb3414ef77);
+
+            
+
+        
+    
+            var tile_layer_47b8ee8e3b6a3966efd48f8c9bf2063c = L.tileLayer(
+                "https://tile.openstreetmap.org/{z}/{x}/{y}.png",
+                {
+  "minZoom": 0,
+  "maxZoom": 19,
+  "maxNativeZoom": 19,
+  "noWrap": false,
+  "attribution": "\u0026copy; \u003ca href=\"https://www.openstreetmap.org/copyright\"\u003eOpenStreetMap\u003c/a\u003e contributors",
+  "subdomains": "abc",
+  "detectRetina": false,
+  "tms": false,
+  "opacity": 1,
+}
+
+            );
+        
+    
+            tile_layer_47b8ee8e3b6a3966efd48f8c9bf2063c.addTo(map_33bae57669c7b8e5607176eb3414ef77);
+        
+    
+            var tile_layer_d6d341992774b80c9e777ad60c0030ce = L.tileLayer(
+                "https://server.arcgisonline.com/ArcGIS/rest/services/World_Topo_Map/MapServer/tile/{z}/{y}/{x}",
+                {
+  "minZoom": 0,
+  "maxZoom": 18,
+  "maxNativeZoom": 18,
+  "noWrap": false,
+  "attribution": "Esri",
+  "subdomains": "abc",
+  "detectRetina": false,
+  "tms": false,
+  "opacity": 1,
+}
+
+            );
+        
+    
+            tile_layer_d6d341992774b80c9e777ad60c0030ce.addTo(map_33bae57669c7b8e5607176eb3414ef77);
+        
+    
+            var tile_layer_e72d5e7cd0259d776bfdc95ad6484571 = L.tileLayer(
+                "https://server.arcgisonline.com/ArcGIS/rest/services/World_Imagery/MapServer/tile/{z}/{y}/{x}",
+                {
+  "minZoom": 0,
+  "maxZoom": 18,
+  "maxNativeZoom": 18,
+  "noWrap": false,
+  "attribution": "Esri",
+  "subdomains": "abc",
+  "detectRetina": false,
+  "tms": false,
+  "opacity": 1,
+}
+
+            );
+        
+    
+            tile_layer_e72d5e7cd0259d776bfdc95ad6484571.addTo(map_33bae57669c7b8e5607176eb3414ef77);
+        
+    
+            var tile_layer_2e269128088ebd407f53d15a086d03e3 = L.tileLayer(
+                "https://tile.openstreetmap.org/{z}/{x}/{y}.png",
+                {
+  "minZoom": 0,
+  "maxZoom": 19,
+  "maxNativeZoom": 19,
+  "noWrap": false,
+  "attribution": "\u0026copy; \u003ca href=\"https://www.openstreetmap.org/copyright\"\u003eOpenStreetMap\u003c/a\u003e contributors",
+  "subdomains": "abc",
+  "detectRetina": false,
+  "tms": false,
+  "opacity": 1,
+}
+
+            );
+        
+    
+            tile_layer_2e269128088ebd407f53d15a086d03e3.addTo(map_33bae57669c7b8e5607176eb3414ef77);
+        
+    
+            var poly_line_38a302a18ddf097a98dc18356bc51945 = L.polyline(
+                [[37.048112, -122.064348], [37.048044, -122.064352], [37.048469, -122.064594], [37.048795999999996, -122.064801], [37.048984, -122.064921], [37.049296999999996, -122.065274], [37.049519999999994, -122.06556], [37.049681, -122.065806], [37.050024, -122.066363], [37.050224, -122.0667], [37.050470999999995, -122.067113], [37.050841999999996, -122.067687], [37.051024, -122.067968], [37.051151, -122.068194], [37.051362, -122.06862], [37.051406, -122.06876], [37.051597, -122.069349], [37.051598999999996, -122.069356], [37.051708, -122.069671], [37.051742, -122.069772], [37.05184, -122.070088], [37.051885, -122.070245], [37.051927, -122.070397], [37.051961999999996, -122.070509], [37.052001, -122.070637], [37.052012, -122.070671], [37.052101, -122.07094], [37.05218, -122.071193], [37.05226, -122.071441], [37.052318, -122.071495], [37.052343, -122.071575], [37.052578, -122.072273], [37.052595, -122.072314], [37.052730999999994, -122.07265], [37.052783999999996, -122.072736], [37.052873, -122.072852], [37.052926, -122.072963], [37.052997, -122.073143], [37.053005, -122.073282], [37.0529384, -122.073255]],
+                {"bubblingMouseEvents": true, "color": "#C0392B", "dashArray": null, "dashOffset": null, "fill": false, "fillColor": "#C0392B", "fillOpacity": 0.2, "fillRule": "evenodd", "lineCap": "round", "lineJoin": "round", "noClip": false, "opacity": 0.9, "smoothFactor": 1.0, "stroke": true, "weight": 7}
+            ).addTo(map_33bae57669c7b8e5607176eb3414ef77);
+        
+    
+        var popup_e78b7ddd043c3a5298e487f50c6dac04 = L.popup({
+  "maxWidth": 360,
+});
+
+        
+            
+                var html_c913d4d023e7c43953b4e5d1022a72cf = $(`<div id="html_c913d4d023e7c43953b4e5d1022a72cf" style="width: 100.0%; height: 100.0%;"><b>Seg 1: Graham Hill Rd</b><br>Graham Hill Rd from the historic rail crossing northeast to the Hwy 9 / Felton Empire Rd intersection, passing Felton Covered Bridge Park<br><i>0.63 mi</i></div>`)[0];
+                popup_e78b7ddd043c3a5298e487f50c6dac04.setContent(html_c913d4d023e7c43953b4e5d1022a72cf);
+            
+        
+
+        poly_line_38a302a18ddf097a98dc18356bc51945.bindPopup(popup_e78b7ddd043c3a5298e487f50c6dac04)
+        ;
+
+        
+    
+    
+            poly_line_38a302a18ddf097a98dc18356bc51945.bindTooltip(
+                `<div>
+                     <b>Seg 1: Graham Hill Rd</b><br>Graham Hill Rd from the historic rail crossing northeast to the Hwy 9 / Felton Empire Rd intersection, passing Felton Covered Bridge Park<br><i>0.63 mi</i>
+                 </div>`,
+                {
+  "sticky": true,
+}
+            );
+        
+    
+            var marker_9df57444908496c7a53abb1f4a981012 = L.marker(
+                [37.05184, -122.070088],
+                {
+}
+            ).addTo(map_33bae57669c7b8e5607176eb3414ef77);
+        
+    
+            var div_icon_8bcaeb4740b56a9359f3be30ce53b003 = L.divIcon({
+  "html": "\u003cdiv style=\"font-size:11px;font-weight:bold;color:#fff;background:#C0392B;border-radius:50%;width:22px;height:22px;line-height:22px;text-align:center;border:2px solid #fff;box-shadow:1px 1px 3px rgba(0,0,0,.5);\"\u003e1\u003c/div\u003e",
+  "iconSize": [22, 22],
+  "iconAnchor": [11, 11],
+  "className": "empty",
+});
+        
+    
+                marker_9df57444908496c7a53abb1f4a981012.setIcon(div_icon_8bcaeb4740b56a9359f3be30ce53b003);
+            
+    
+            var poly_line_749de251fec0bb29e4b78f4a398a8fb1 = L.polyline(
+                [[37.0529384, -122.073255], [37.05308, -122.073282], [37.0532475, -122.0733239], [37.0535314, -122.0734224], [37.0535492, -122.0734307], [37.0536868, -122.0734985], [37.0539566, -122.0736759], [37.0545152, -122.0740856], [37.0550773, -122.0744988], [37.0550925, -122.0745102], [37.0553541, -122.0747024], [37.0554711, -122.0747943], [37.0556204, -122.0749126], [37.0556921, -122.0749661], [37.0560687, -122.0752472], [37.0562385, -122.075374], [37.0572026, -122.0760942], [37.0573971, -122.0762519], [37.0575792, -122.0764219], [37.0578037, -122.0766778], [37.0579713, -122.0769336], [37.0580748, -122.0771518], [37.0581723, -122.0773691], [37.0584794, -122.0780472], [37.0584943, -122.0780801], [37.0586372, -122.0784093], [37.0586636, -122.0784611], [37.0587088, -122.0785502], [37.0587868, -122.0786893], [37.0589404, -122.0788928], [37.0590427, -122.0790031], [37.0591586, -122.0791107], [37.0593606, -122.0792634], [37.059557, -122.0793615], [37.0604015, -122.0796441]],
+                {"bubblingMouseEvents": true, "color": "#E67E22", "dashArray": null, "dashOffset": null, "fill": false, "fillColor": "#E67E22", "fillOpacity": 0.2, "fillRule": "evenodd", "lineCap": "round", "lineJoin": "round", "noClip": false, "opacity": 0.9, "smoothFactor": 1.0, "stroke": true, "weight": 7}
+            ).addTo(map_33bae57669c7b8e5607176eb3414ef77);
+        
+    
+        var popup_a03988118523f9e691c31c2970de51f0 = L.popup({
+  "maxWidth": 360,
+});
+
+        
+            
+                var html_c23ee5c9eb5e5c1ffc9e734593e4ed45 = $(`<div id="html_c23ee5c9eb5e5c1ffc9e734593e4ed45" style="width: 100.0%; height: 100.0%;"><b>Seg 2: Hwy 9 — Caltrans 05-1M400 (in progress)</b><br>Hwy 9 west-side shared-use path northbound — existing Caltrans project 05-1M400 (Felton Empire / Graham Hill Rd to SLV High School entrance)<br><i>0.64 mi</i></div>`)[0];
+                popup_a03988118523f9e691c31c2970de51f0.setContent(html_c23ee5c9eb5e5c1ffc9e734593e4ed45);
+            
+        
+
+        poly_line_749de251fec0bb29e4b78f4a398a8fb1.bindPopup(popup_a03988118523f9e691c31c2970de51f0)
+        ;
+
+        
+    
+    
+            poly_line_749de251fec0bb29e4b78f4a398a8fb1.bindTooltip(
+                `<div>
+                     <b>Seg 2: Hwy 9 — Caltrans 05-1M400 (in progress)</b><br>Hwy 9 west-side shared-use path northbound — existing Caltrans project 05-1M400 (Felton Empire / Graham Hill Rd to SLV High School entrance)<br><i>0.64 mi</i>
+                 </div>`,
+                {
+  "sticky": true,
+}
+            );
+        
+    
+            var marker_82d6d1f59a0094ac7971fe84aeb9ceac = L.marker(
+                [37.0573971, -122.0762519],
+                {
+}
+            ).addTo(map_33bae57669c7b8e5607176eb3414ef77);
+        
+    
+            var div_icon_3376de3129f843894c5e2d931dda5761 = L.divIcon({
+  "html": "\u003cdiv style=\"font-size:11px;font-weight:bold;color:#fff;background:#E67E22;border-radius:50%;width:22px;height:22px;line-height:22px;text-align:center;border:2px solid #fff;box-shadow:1px 1px 3px rgba(0,0,0,.5);\"\u003e2\u003c/div\u003e",
+  "iconSize": [22, 22],
+  "iconAnchor": [11, 11],
+  "className": "empty",
+});
+        
+    
+                marker_82d6d1f59a0094ac7971fe84aeb9ceac.setIcon(div_icon_3376de3129f843894c5e2d931dda5761);
+            
+    
+            var poly_line_7e9f9a4d98fd2c5b9de90cf39a830b47 = L.polyline(
+                [[37.0606156, -122.0797304], [37.0604015, -122.0796441], [37.0606156, -122.0797304], [37.0609781, -122.0798775], [37.0611324, -122.0799362], [37.0612958, -122.0799985], [37.0613602, -122.080023], [37.0614828, -122.080044], [37.0616021, -122.080055], [37.062096, -122.0800587], [37.0624531, -122.0800539], [37.0627912, -122.0800448], [37.0628871, -122.0800349], [37.0629919, -122.0800146], [37.0633181, -122.0799139], [37.0639498, -122.0797301], [37.0643406, -122.0796492], [37.0645836, -122.0795994], [37.0649437, -122.0795888], [37.0652723, -122.0796089], [37.065372, -122.0796247], [37.0654933, -122.0796398], [37.0656295, -122.0796563], [37.0656914, -122.0796638], [37.0659604, -122.0796962], [37.0659925, -122.0797013], [37.0662698, -122.0797394], [37.0665248, -122.0797774], [37.0666557, -122.0798191], [37.0666778, -122.0798308], [37.0667238, -122.0798509], [37.0668741, -122.0799499], [37.0669595, -122.0800188], [37.0670486, -122.080119], [37.0671316, -122.0802376], [37.067176, -122.0803099], [37.0672106, -122.080376], [37.0672341, -122.0804279], [37.0672583, -122.0804829], [37.0672884, -122.0805618], [37.067319, -122.0806576], [37.0673481, -122.0807682], [37.0674296, -122.0810764], [37.067453, -122.0811707], [37.0674816, -122.08127], [37.0675105, -122.0813611], [37.0675438, -122.0814587], [37.067619, -122.0816623], [37.067849, -122.0822291], [37.0679022, -122.082357], [37.0679479, -122.0824573], [37.0679887, -122.0825428], [37.0680219, -122.0826057], [37.0680487, -122.0826533], [37.0680798, -122.082701], [37.0681179, -122.0827556], [37.0681662, -122.0828131], [37.068812, -122.0834774], [37.0689424, -122.0836082], [37.0690316, -122.0836897], [37.0691214, -122.0837687], [37.0692049, -122.083836], [37.0693152, -122.0839176], [37.0694179, -122.0839794], [37.0695252, -122.0840374], [37.0696323, -122.0840874], [37.0697411, -122.0841309], [37.069849, -122.0841673], [37.0699603, -122.0842006], [37.0700905, -122.0842295], [37.07022, -122.0842535], [37.0705272, -122.0842693], [37.0708692, -122.0842385], [37.0711988, -122.0841809], [37.0714298, -122.084146], [37.0716452, -122.0841515], [37.0716561, -122.0841517], [37.0717016, -122.0841603], [37.0719575, -122.0842082], [37.0722305, -122.0842734], [37.0724884, -122.0843293], [37.0728172, -122.0843906], [37.0729654, -122.0844164], [37.0730079, -122.0844248], [37.0731648, -122.0844438], [37.0735349, -122.0844901], [37.0737314, -122.0845097], [37.0739594, -122.0845202], [37.0741252, -122.0845198], [37.0742743, -122.0845168], [37.0748424, -122.084475], [37.0757328, -122.084398], [37.0758443, -122.0843761], [37.0760252, -122.0843143], [37.076222, -122.0842713], [37.0763612, -122.0842634], [37.0765273, -122.0842862], [37.0766787, -122.0843276], [37.0768405, -122.084355], [37.076931, -122.0843547], [37.0770435, -122.084326], [37.077145, -122.0842795], [37.0774006, -122.0841251], [37.0775025, -122.0840617], [37.0776018, -122.0839756], [37.0776726, -122.0838906], [37.0777155, -122.0838205], [37.0778045, -122.0836503], [37.0778847, -122.0835123], [37.077967, -122.0834141], [37.0780745, -122.0833126], [37.0781962, -122.083235], [37.0783319, -122.0831762], [37.0784746, -122.0831511], [37.0786112, -122.0831614], [37.0787433, -122.083197], [37.0792466, -122.0834123], [37.079371, -122.0834655]],
+                {"bubblingMouseEvents": true, "color": "#F1C40F", "dashArray": null, "dashOffset": null, "fill": false, "fillColor": "#F1C40F", "fillOpacity": 0.2, "fillRule": "evenodd", "lineCap": "round", "lineJoin": "round", "noClip": false, "opacity": 0.9, "smoothFactor": 1.0, "stroke": true, "weight": 7}
+            ).addTo(map_33bae57669c7b8e5607176eb3414ef77);
+        
+    
+        var popup_59ac64e10a0de143eda6016bfd703e8e = L.popup({
+  "maxWidth": 360,
+});
+
+        
+            
+                var html_6617da14f5d04324d1fa836d1a6de591 = $(`<div id="html_6617da14f5d04324d1fa836d1a6de591" style="width: 100.0%; height: 100.0%;"><b>Seg 3: Hwy 9 to Highlands Park</b><br>Hwy 9 west-side path continuing north from SLV High School to the Highlands County Park entrance<br><i>1.48 mi</i></div>`)[0];
+                popup_59ac64e10a0de143eda6016bfd703e8e.setContent(html_6617da14f5d04324d1fa836d1a6de591);
+            
+        
+
+        poly_line_7e9f9a4d98fd2c5b9de90cf39a830b47.bindPopup(popup_59ac64e10a0de143eda6016bfd703e8e)
+        ;
+
+        
+    
+    
+            poly_line_7e9f9a4d98fd2c5b9de90cf39a830b47.bindTooltip(
+                `<div>
+                     <b>Seg 3: Hwy 9 to Highlands Park</b><br>Hwy 9 west-side path continuing north from SLV High School to the Highlands County Park entrance<br><i>1.48 mi</i>
+                 </div>`,
+                {
+  "sticky": true,
+}
+            );
+        
+    
+            var marker_19bc9fc2aeb8cac783e2191459ec7802 = L.marker(
+                [37.0690316, -122.0836897],
+                {
+}
+            ).addTo(map_33bae57669c7b8e5607176eb3414ef77);
+        
+    
+            var div_icon_10abddfa3c44e1de590afe24ec8a3332 = L.divIcon({
+  "html": "\u003cdiv style=\"font-size:11px;font-weight:bold;color:#fff;background:#F1C40F;border-radius:50%;width:22px;height:22px;line-height:22px;text-align:center;border:2px solid #fff;box-shadow:1px 1px 3px rgba(0,0,0,.5);\"\u003e3\u003c/div\u003e",
+  "iconSize": [22, 22],
+  "iconAnchor": [11, 11],
+  "className": "empty",
+});
+        
+    
+                marker_19bc9fc2aeb8cac783e2191459ec7802.setIcon(div_icon_10abddfa3c44e1de590afe24ec8a3332);
+            
+    
+            var poly_line_58245028a143a8b693755679365562e5 = L.polyline(
+                [[37.079357, -122.08346], [37.079371, -122.083466], [37.079393, -122.083367], [37.079459, -122.083173], [37.07955, -122.083136], [37.079651, -122.083217], [37.079832, -122.083364], [37.079973, -122.083362], [37.080199, -122.083325], [37.080312, -122.083271], [37.080373, -122.083166], [37.080706, -122.082594], [37.080831, -122.082383], [37.080722, -122.082185], [37.080661, -122.082129], [37.080396, -122.081929], [37.080561, -122.081542], [37.08071, -122.081375], [37.08078, -122.081164], [37.080787, -122.080925], [37.081497, -122.080086]],
+                {"bubblingMouseEvents": true, "color": "#27AE60", "dashArray": null, "dashOffset": null, "fill": false, "fillColor": "#27AE60", "fillOpacity": 0.2, "fillRule": "evenodd", "lineCap": "round", "lineJoin": "round", "noClip": false, "opacity": 0.9, "smoothFactor": 1.0, "stroke": true, "weight": 7}
+            ).addTo(map_33bae57669c7b8e5607176eb3414ef77);
+        
+    
+        var popup_579d59420a12fa3ac216bc3c1a8fc0fb = L.popup({
+  "maxWidth": 360,
+});
+
+        
+            
+                var html_5435f434cce59009b0f465a629d83817 = $(`<div id="html_5435f434cce59009b0f465a629d83817" style="width: 100.0%; height: 100.0%;"><b>Seg 4: Highlands County Park — park path to river</b><br>Highlands County Park: park path from the Hwy 9 entrance to the San Lorenzo River bank<br><i>0.31 mi</i></div>`)[0];
+                popup_579d59420a12fa3ac216bc3c1a8fc0fb.setContent(html_5435f434cce59009b0f465a629d83817);
+            
+        
+
+        poly_line_58245028a143a8b693755679365562e5.bindPopup(popup_579d59420a12fa3ac216bc3c1a8fc0fb)
+        ;
+
+        
+    
+    
+            poly_line_58245028a143a8b693755679365562e5.bindTooltip(
+                `<div>
+                     <b>Seg 4: Highlands County Park — park path to river</b><br>Highlands County Park: park path from the Hwy 9 entrance to the San Lorenzo River bank<br><i>0.31 mi</i>
+                 </div>`,
+                {
+  "sticky": true,
+}
+            );
+        
+    
+            var marker_969bfad8e876defc2b7456d024c5228a = L.marker(
+                [37.080373, -122.083166],
+                {
+}
+            ).addTo(map_33bae57669c7b8e5607176eb3414ef77);
+        
+    
+            var div_icon_60daf946d933f6f77dac9ec2ea4060d6 = L.divIcon({
+  "html": "\u003cdiv style=\"font-size:11px;font-weight:bold;color:#fff;background:#27AE60;border-radius:50%;width:22px;height:22px;line-height:22px;text-align:center;border:2px solid #fff;box-shadow:1px 1px 3px rgba(0,0,0,.5);\"\u003e4\u003c/div\u003e",
+  "iconSize": [22, 22],
+  "iconAnchor": [11, 11],
+  "className": "empty",
+});
+        
+    
+                marker_969bfad8e876defc2b7456d024c5228a.setIcon(div_icon_60daf946d933f6f77dac9ec2ea4060d6);
+            
+    
+            var poly_line_8ef49fde9c1a367bf7011fb497af01b7 = L.polyline(
+                [[37.081497, -122.080086], [37.08189, -122.079521]],
+                {"bubblingMouseEvents": true, "color": "#2980B9", "dashArray": "10 6", "dashOffset": null, "fill": false, "fillColor": "#2980B9", "fillOpacity": 0.2, "fillRule": "evenodd", "lineCap": "round", "lineJoin": "round", "noClip": false, "opacity": 0.9, "smoothFactor": 1.0, "stroke": true, "weight": 7}
+            ).addTo(map_33bae57669c7b8e5607176eb3414ef77);
+        
+    
+        var popup_227ee1a11c9fc5e9beab64123cc5b2cb = L.popup({
+  "maxWidth": 360,
+});
+
+        
+            
+                var html_1ee777c020c6fa537c4e4ea40a65ff2e = $(`<div id="html_1ee777c020c6fa537c4e4ea40a65ff2e" style="width: 100.0%; height: 100.0%;"><b>Seg 5: Proposed Pedestrian / Bicycle Bridge</b><br>Proposed pedestrian and bicycle bridge across the San Lorenzo River (2-point straight-line placeholder)<br><i>0.04 mi</i></div>`)[0];
+                popup_227ee1a11c9fc5e9beab64123cc5b2cb.setContent(html_1ee777c020c6fa537c4e4ea40a65ff2e);
+            
+        
+
+        poly_line_8ef49fde9c1a367bf7011fb497af01b7.bindPopup(popup_227ee1a11c9fc5e9beab64123cc5b2cb)
+        ;
+
+        
+    
+    
+            poly_line_8ef49fde9c1a367bf7011fb497af01b7.bindTooltip(
+                `<div>
+                     <b>Seg 5: Proposed Pedestrian / Bicycle Bridge</b><br>Proposed pedestrian and bicycle bridge across the San Lorenzo River (2-point straight-line placeholder)<br><i>0.04 mi</i>
+                 </div>`,
+                {
+  "sticky": true,
+}
+            );
+        
+    
+            var marker_ff9f3daa0ca934224bd1788c85ff4070 = L.marker(
+                [37.08189, -122.079521],
+                {
+}
+            ).addTo(map_33bae57669c7b8e5607176eb3414ef77);
+        
+    
+            var div_icon_f678fdaba05e86feb5f4f78ddec1b7ef = L.divIcon({
+  "html": "\u003cdiv style=\"font-size:11px;font-weight:bold;color:#fff;background:#2980B9;border-radius:50%;width:22px;height:22px;line-height:22px;text-align:center;border:2px solid #fff;box-shadow:1px 1px 3px rgba(0,0,0,.5);\"\u003e5\u003c/div\u003e",
+  "iconSize": [22, 22],
+  "iconAnchor": [11, 11],
+  "className": "empty",
+});
+        
+    
+                marker_ff9f3daa0ca934224bd1788c85ff4070.setIcon(div_icon_f678fdaba05e86feb5f4f78ddec1b7ef);
+            
+    
+            var poly_line_9798622670370b9f5be829af7f78cb47 = L.polyline(
+                [[37.081913, -122.07952], [37.081911, -122.079009], [37.081919, -122.078093], [37.081464, -122.077975], [37.081237, -122.077904], [37.081125, -122.077869], [37.080454, -122.077662], [37.080243, -122.077615], [37.080084, -122.077601], [37.079924, -122.077592], [37.079749, -122.07761], [37.079601, -122.077639], [37.079382, -122.077706], [37.079196, -122.077799], [37.079055, -122.077643], [37.078983, -122.07747]],
+                {"bubblingMouseEvents": true, "color": "#16A085", "dashArray": null, "dashOffset": null, "fill": false, "fillColor": "#16A085", "fillOpacity": 0.2, "fillRule": "evenodd", "lineCap": "round", "lineJoin": "round", "noClip": false, "opacity": 0.9, "smoothFactor": 1.0, "stroke": true, "weight": 7}
+            ).addTo(map_33bae57669c7b8e5607176eb3414ef77);
+        
+    
+        var popup_310a954557a8803e01999da9ffce2654 = L.popup({
+  "maxWidth": 360,
+});
+
+        
+            
+                var html_7d8ba5b13d829beae74dc8a0149c7b63 = $(`<div id="html_7d8ba5b13d829beae74dc8a0149c7b63" style="width: 100.0%; height: 100.0%;"><b>Seg 6: Maple Ave and Glen Arbor Rd</b><br>Maple Ave north from the bridge east landing to the Glen Arbor Rd junction<br><i>0.30 mi</i></div>`)[0];
+                popup_310a954557a8803e01999da9ffce2654.setContent(html_7d8ba5b13d829beae74dc8a0149c7b63);
+            
+        
+
+        poly_line_9798622670370b9f5be829af7f78cb47.bindPopup(popup_310a954557a8803e01999da9ffce2654)
+        ;
+
+        
+    
+    
+            poly_line_9798622670370b9f5be829af7f78cb47.bindTooltip(
+                `<div>
+                     <b>Seg 6: Maple Ave and Glen Arbor Rd</b><br>Maple Ave north from the bridge east landing to the Glen Arbor Rd junction<br><i>0.30 mi</i>
+                 </div>`,
+                {
+  "sticky": true,
+}
+            );
+        
+    
+            var marker_e4502a6c18edc065a07632ab0b476da6 = L.marker(
+                [37.080084, -122.077601],
+                {
+}
+            ).addTo(map_33bae57669c7b8e5607176eb3414ef77);
+        
+    
+            var div_icon_e253f44bfac5e319e6377b546821f6ee = L.divIcon({
+  "html": "\u003cdiv style=\"font-size:11px;font-weight:bold;color:#fff;background:#16A085;border-radius:50%;width:22px;height:22px;line-height:22px;text-align:center;border:2px solid #fff;box-shadow:1px 1px 3px rgba(0,0,0,.5);\"\u003e6\u003c/div\u003e",
+  "iconSize": [22, 22],
+  "iconAnchor": [11, 11],
+  "className": "empty",
+});
+        
+    
+                marker_e4502a6c18edc065a07632ab0b476da6.setIcon(div_icon_e253f44bfac5e319e6377b546821f6ee);
+            
+    
+            var poly_line_cbd2ad9e3ce5fa427b7fc46cbdbed494 = L.polyline(
+                [[37.078983, -122.07747], [37.079039, -122.077393], [37.079216, -122.077164], [37.079436, -122.077033], [37.080401, -122.076472], [37.080666, -122.0764], [37.081299, -122.076395], [37.081704, -122.076392], [37.082126, -122.076357], [37.082348, -122.07629], [37.082545, -122.076158], [37.082653, -122.075982], [37.082682, -122.07585], [37.082649, -122.075721], [37.081778, -122.073813], [37.081601, -122.073478], [37.081439, -122.073258], [37.081348, -122.07307], [37.081289, -122.072886], [37.081284, -122.072626], [37.081387, -122.072146], [37.081477, -122.07182], [37.081565, -122.070614], [37.081621, -122.070166], [37.081694, -122.069927], [37.081817, -122.06976], [37.081935, -122.06966], [37.082092, -122.069623], [37.082215, -122.069619], [37.082523, -122.06961], [37.082702, -122.069523], [37.082986, -122.069122], [37.083157, -122.068865], [37.083349, -122.068628], [37.083505, -122.068435], [37.083893, -122.068073], [37.084091, -122.067923], [37.084191, -122.067893], [37.084298, -122.067894], [37.084633, -122.068151], [37.084738, -122.068239], [37.084919, -122.068288], [37.085069, -122.068312], [37.08534, -122.068141], [37.085569, -122.06787], [37.085758, -122.067523], [37.085837, -122.06736], [37.085867, -122.067169], [37.085858, -122.066939], [37.085784, -122.066659], [37.085583, -122.066047], [37.08522, -122.065198], [37.084951, -122.064831], [37.084764, -122.064645], [37.084533, -122.064557], [37.083273, -122.064303], [37.082966, -122.064246], [37.08262, -122.064098], [37.082331, -122.063959], [37.082032, -122.063779], [37.08167, -122.063532], [37.081347, -122.063137], [37.080782, -122.062825], [37.080459, -122.062625], [37.080135, -122.062276], [37.079869, -122.061721], [37.079708, -122.061244], [37.079481, -122.060823], [37.078676, -122.059621], [37.078393, -122.059147], [37.078199, -122.058899], [37.077947, -122.058659], [37.077143, -122.057985], [37.074555, -122.055753], [37.07453, -122.055733], [37.074476, -122.055647], [37.074312, -122.055283], [37.074283, -122.055214], [37.074077, -122.055422], [37.073925, -122.055563], [37.073757, -122.055066], [37.07358, -122.054541], [37.073531, -122.054235], [37.07354, -122.053984], [37.073662, -122.053741], [37.073675, -122.053644], [37.073675, -122.053642]],
+                {"bubblingMouseEvents": true, "color": "#8E44AD", "dashArray": null, "dashOffset": null, "fill": false, "fillColor": "#8E44AD", "fillOpacity": 0.2, "fillRule": "evenodd", "lineCap": "round", "lineJoin": "round", "noClip": false, "opacity": 0.9, "smoothFactor": 1.0, "stroke": true, "weight": 7}
+            ).addTo(map_33bae57669c7b8e5607176eb3414ef77);
+        
+    
+        var popup_da8cc52e3c2e20366acf30b34a4bc0c9 = L.popup({
+  "maxWidth": 360,
+});
+
+        
+            
+                var html_78cb177156d8249baf51d1c5be9c68b7 = $(`<div id="html_78cb177156d8249baf51d1c5be9c68b7" style="width: 100.0%; height: 100.0%;"><b>Seg 7: Quail Hollow Rd</b><br>Glen Arbor Rd east from Maple Ave, then Quail Hollow Rd south to the Olympia Station Rd / Olympia Watershed trail entrance<br><i>2.24 mi</i></div>`)[0];
+                popup_da8cc52e3c2e20366acf30b34a4bc0c9.setContent(html_78cb177156d8249baf51d1c5be9c68b7);
+            
+        
+
+        poly_line_cbd2ad9e3ce5fa427b7fc46cbdbed494.bindPopup(popup_da8cc52e3c2e20366acf30b34a4bc0c9)
+        ;
+
+        
+    
+    
+            poly_line_cbd2ad9e3ce5fa427b7fc46cbdbed494.bindTooltip(
+                `<div>
+                     <b>Seg 7: Quail Hollow Rd</b><br>Glen Arbor Rd east from Maple Ave, then Quail Hollow Rd south to the Olympia Station Rd / Olympia Watershed trail entrance<br><i>2.24 mi</i>
+                 </div>`,
+                {
+  "sticky": true,
+}
+            );
+        
+    
+            var marker_785fab41e55fd40fc1ed008948ce7a30 = L.marker(
+                [37.08534, -122.068141],
+                {
+}
+            ).addTo(map_33bae57669c7b8e5607176eb3414ef77);
+        
+    
+            var div_icon_8115ba67edd800d1aa41707c865c2181 = L.divIcon({
+  "html": "\u003cdiv style=\"font-size:11px;font-weight:bold;color:#fff;background:#8E44AD;border-radius:50%;width:22px;height:22px;line-height:22px;text-align:center;border:2px solid #fff;box-shadow:1px 1px 3px rgba(0,0,0,.5);\"\u003e7\u003c/div\u003e",
+  "iconSize": [22, 22],
+  "iconAnchor": [11, 11],
+  "className": "empty",
+});
+        
+    
+                marker_785fab41e55fd40fc1ed008948ce7a30.setIcon(div_icon_8115ba67edd800d1aa41707c865c2181);
+            
+    
+            var poly_line_ddedc2c7f593920a089f3e0def2c700b = L.polyline(
+                [[37.073675, -122.053644], [37.073482, -122.053844], [37.073313, -122.053995], [37.073082, -122.054172], [37.072784, -122.054367], [37.072685, -122.054426], [37.07257, -122.054481], [37.072346, -122.05457], [37.072233, -122.054606], [37.07212, -122.054643], [37.071891, -122.054694], [37.071384, -122.054794], [37.0707, -122.054935], [37.070438, -122.054995], [37.070253, -122.055068], [37.070073, -122.055153], [37.06994, -122.055226], [37.069809, -122.055316], [37.069571, -122.055515], [37.069123, -122.055898], [37.068849, -122.056135], [37.068642, -122.056297], [37.068536, -122.056364], [37.068421, -122.056427], [37.068311, -122.056472], [37.0682, -122.056508], [37.068094, -122.056528], [37.067997, -122.056541], [37.067838, -122.056544], [37.067696, -122.056531], [37.067549, -122.056506], [37.067288, -122.056426], [37.066761, -122.056232], [37.066521, -122.056137], [37.066289, -122.056049], [37.066137, -122.056006], [37.066034, -122.055984], [37.065929, -122.055969], [37.065807, -122.055965], [37.06574, -122.055962], [37.065674, -122.055964], [37.065329, -122.055984], [37.065017, -122.055996], [37.064931, -122.055997], [37.064839, -122.05599], [37.064707, -122.055972], [37.06454, -122.055945], [37.064515, -122.055939], [37.064372, -122.055903], [37.064289, -122.055881], [37.064206, -122.055851], [37.064038, -122.055773], [37.063879, -122.055702], [37.063564, -122.055544], [37.063361, -122.055457], [37.063264, -122.055427], [37.063167, -122.055401], [37.062939, -122.055362], [37.062758, -122.055351], [37.062593, -122.055364], [37.062433, -122.055392], [37.062287, -122.055433], [37.062072, -122.055512], [37.061873, -122.0556], [37.061737, -122.055679], [37.061571, -122.055792], [37.061407, -122.055914], [37.061183, -122.05613], [37.06096, -122.056416], [37.060603, -122.056923], [37.060516, -122.057086], [37.060411, -122.057251], [37.060289, -122.057403], [37.060167, -122.057537], [37.059952, -122.057743], [37.059495, -122.058145], [37.058982, -122.058599], [37.058832, -122.058729], [37.058405, -122.059046], [37.057977, -122.059322], [37.057546, -122.059597], [37.056852, -122.060051], [37.056297, -122.060381], [37.055888, -122.060543], [37.055572, -122.060646], [37.055138, -122.060742], [37.054909, -122.060801], [37.0547, -122.06088], [37.054471, -122.061012], [37.05436, -122.061092], [37.054253, -122.061178], [37.054082, -122.061349], [37.053632, -122.061829], [37.053148, -122.062274], [37.052251, -122.0628], [37.051449, -122.063266], [37.051211, -122.063396], [37.050973, -122.063526], [37.050139, -122.064002], [37.050043, -122.064062], [37.04995, -122.064111], [37.049884, -122.064143], [37.04972, -122.064222], [37.049566, -122.064286], [37.049352, -122.064336], [37.049216, -122.064363], [37.049094, -122.064382], [37.049007, -122.064383], [37.048119, -122.064352]],
+                {"bubblingMouseEvents": true, "color": "#795548", "dashArray": "5 8", "dashOffset": null, "fill": false, "fillColor": "#795548", "fillOpacity": 0.2, "fillRule": "evenodd", "lineCap": "round", "lineJoin": "round", "noClip": false, "opacity": 0.9, "smoothFactor": 1.0, "stroke": true, "weight": 7}
+            ).addTo(map_33bae57669c7b8e5607176eb3414ef77);
+        
+    
+        var popup_0f1b49fb70f58ec3609748f0857cafbb = L.popup({
+  "maxWidth": 360,
+});
+
+        
+            
+                var html_0ed05b5f0e72f278ef7729f992919b81 = $(`<div id="html_0ed05b5f0e72f278ef7729f992919b81" style="width: 100.0%; height: 100.0%;"><b>Seg 8: Historic SP Olympia Branch (proposed rail trail)</b><br>Historic Southern Pacific / Santa Cruz, Big Trees & Pacific Railway Olympia Branch alignment — proposed rail trail southwest to the Graham Hill Rd crossing<br><i>1.96 mi</i></div>`)[0];
+                popup_0f1b49fb70f58ec3609748f0857cafbb.setContent(html_0ed05b5f0e72f278ef7729f992919b81);
+            
+        
+
+        poly_line_ddedc2c7f593920a089f3e0def2c700b.bindPopup(popup_0f1b49fb70f58ec3609748f0857cafbb)
+        ;
+
+        
+    
+    
+            poly_line_ddedc2c7f593920a089f3e0def2c700b.bindTooltip(
+                `<div>
+                     <b>Seg 8: Historic SP Olympia Branch (proposed rail trail)</b><br>Historic Southern Pacific / Santa Cruz, Big Trees & Pacific Railway Olympia Branch alignment — proposed rail trail southwest to the Graham Hill Rd crossing<br><i>1.96 mi</i>
+                 </div>`,
+                {
+  "sticky": true,
+}
+            );
+        
+    
+            var marker_4c0685b156378e5631d8ebe47d2eff41 = L.marker(
+                [37.063361, -122.055457],
+                {
+}
+            ).addTo(map_33bae57669c7b8e5607176eb3414ef77);
+        
+    
+            var div_icon_f867558a6823e98f3c1aff85b0e6bbd9 = L.divIcon({
+  "html": "\u003cdiv style=\"font-size:11px;font-weight:bold;color:#fff;background:#795548;border-radius:50%;width:22px;height:22px;line-height:22px;text-align:center;border:2px solid #fff;box-shadow:1px 1px 3px rgba(0,0,0,.5);\"\u003e8\u003c/div\u003e",
+  "iconSize": [22, 22],
+  "iconAnchor": [11, 11],
+  "className": "empty",
+});
+        
+    
+                marker_4c0685b156378e5631d8ebe47d2eff41.setIcon(div_icon_f867558a6823e98f3c1aff85b0e6bbd9);
+            
+    
+            var marker_71eea5e5be798ac6578e1934b96c9730 = L.marker(
+                [37.051935, -122.070662],
+                {
+}
+            ).addTo(map_33bae57669c7b8e5607176eb3414ef77);
+        
+    
+            var icon_26cc42477b4a50b7504ac65350ce11b5 = L.AwesomeMarkers.icon(
+                {
+  "markerColor": "blue",
+  "iconColor": "white",
+  "icon": "star",
+  "prefix": "glyphicon",
+  "extraClasses": "fa-rotate-0",
+}
+            );
+        
+    
+        var popup_81002a0a0fdec6fdfc5bc4ca2596ffec = L.popup({
+  "maxWidth": 300,
+});
+
+        
+            
+                var html_804ec56251bdf2df5729714ffcfdd391 = $(`<div id="html_804ec56251bdf2df5729714ffcfdd391" style="width: 100.0%; height: 100.0%;"><b>Felton Covered Bridge Park</b><br>Historic 1892 covered bridge over the San Lorenzo River. Key landmark on the Graham Hill Rd segment.</div>`)[0];
+                popup_81002a0a0fdec6fdfc5bc4ca2596ffec.setContent(html_804ec56251bdf2df5729714ffcfdd391);
+            
+        
+
+        marker_71eea5e5be798ac6578e1934b96c9730.bindPopup(popup_81002a0a0fdec6fdfc5bc4ca2596ffec)
+        ;
+
+        
+    
+    
+            marker_71eea5e5be798ac6578e1934b96c9730.bindTooltip(
+                `<div>
+                     <b>Felton Covered Bridge Park</b>
+                 </div>`,
+                {
+  "sticky": true,
+}
+            );
+        
+    
+                marker_71eea5e5be798ac6578e1934b96c9730.setIcon(icon_26cc42477b4a50b7504ac65350ce11b5);
+            
+    
+            var marker_625b7fe2c85658439537c9608eb4c96f = L.marker(
+                [37.0604015, -122.0796441],
+                {
+}
+            ).addTo(map_33bae57669c7b8e5607176eb3414ef77);
+        
+    
+            var icon_d893107e368cd7210beaa92e20e93cee = L.AwesomeMarkers.icon(
+                {
+  "markerColor": "blue",
+  "iconColor": "white",
+  "icon": "star",
+  "prefix": "glyphicon",
+  "extraClasses": "fa-rotate-0",
+}
+            );
+        
+    
+        var popup_4326d84164ec66b9aff7ea23feb5688d = L.popup({
+  "maxWidth": 300,
+});
+
+        
+            
+                var html_2a467a68d6154d0a83afc0e9ad21cd6c = $(`<div id="html_2a467a68d6154d0a83afc0e9ad21cd6c" style="width: 100.0%; height: 100.0%;"><b>SLV High School (Hwy 9 entrance)</b><br>San Lorenzo Valley High School — Hwy 9 driveway entrance. End of Caltrans 05-1M400 project segment.</div>`)[0];
+                popup_4326d84164ec66b9aff7ea23feb5688d.setContent(html_2a467a68d6154d0a83afc0e9ad21cd6c);
+            
+        
+
+        marker_625b7fe2c85658439537c9608eb4c96f.bindPopup(popup_4326d84164ec66b9aff7ea23feb5688d)
+        ;
+
+        
+    
+    
+            marker_625b7fe2c85658439537c9608eb4c96f.bindTooltip(
+                `<div>
+                     <b>SLV High School (Hwy 9 entrance)</b>
+                 </div>`,
+                {
+  "sticky": true,
+}
+            );
+        
+    
+                marker_625b7fe2c85658439537c9608eb4c96f.setIcon(icon_d893107e368cd7210beaa92e20e93cee);
+            
+    
+            var marker_a89ba84b5580452a3ae06a9f3d60f85d = L.marker(
+                [37.0805, -122.082839],
+                {
+}
+            ).addTo(map_33bae57669c7b8e5607176eb3414ef77);
+        
+    
+            var icon_b05fc44638adb27fa5c0b28eb59ca406 = L.AwesomeMarkers.icon(
+                {
+  "markerColor": "blue",
+  "iconColor": "white",
+  "icon": "star",
+  "prefix": "glyphicon",
+  "extraClasses": "fa-rotate-0",
+}
+            );
+        
+    
+        var popup_fc5fa5c97e58b5fd249dbfbc4d18cb42 = L.popup({
+  "maxWidth": 300,
+});
+
+        
+            
+                var html_6bd149fe63a5f7996d3a043c8c99250c = $(`<div id="html_6bd149fe63a5f7996d3a043c8c99250c" style="width: 100.0%; height: 100.0%;"><b>Highlands County Park</b><br>Highlands County Park. Park path leads from the Hwy 9 entrance to the proposed river crossing.</div>`)[0];
+                popup_fc5fa5c97e58b5fd249dbfbc4d18cb42.setContent(html_6bd149fe63a5f7996d3a043c8c99250c);
+            
+        
+
+        marker_a89ba84b5580452a3ae06a9f3d60f85d.bindPopup(popup_fc5fa5c97e58b5fd249dbfbc4d18cb42)
+        ;
+
+        
+    
+    
+            marker_a89ba84b5580452a3ae06a9f3d60f85d.bindTooltip(
+                `<div>
+                     <b>Highlands County Park</b>
+                 </div>`,
+                {
+  "sticky": true,
+}
+            );
+        
+    
+                marker_a89ba84b5580452a3ae06a9f3d60f85d.setIcon(icon_b05fc44638adb27fa5c0b28eb59ca406);
+            
+    
+            var marker_465fb8d5b486f9e4623d402af7bacd1b = L.marker(
+                [37.082358, -122.063464],
+                {
+}
+            ).addTo(map_33bae57669c7b8e5607176eb3414ef77);
+        
+    
+            var icon_fb85f2d3fe7cdedac0cf9e2c295e73ea = L.AwesomeMarkers.icon(
+                {
+  "markerColor": "blue",
+  "iconColor": "white",
+  "icon": "star",
+  "prefix": "glyphicon",
+  "extraClasses": "fa-rotate-0",
+}
+            );
+        
+    
+        var popup_b24039ddbf813f1a447891312506de87 = L.popup({
+  "maxWidth": 300,
+});
+
+        
+            
+                var html_f332e73450393d44bcadd6f445f08f0f = $(`<div id="html_f332e73450393d44bcadd6f445f08f0f" style="width: 100.0%; height: 100.0%;"><b>Quail Hollow Ranch County Park</b><br>Quail Hollow Ranch County Park — on-loop access from Quail Hollow Rd.</div>`)[0];
+                popup_b24039ddbf813f1a447891312506de87.setContent(html_f332e73450393d44bcadd6f445f08f0f);
+            
+        
+
+        marker_465fb8d5b486f9e4623d402af7bacd1b.bindPopup(popup_b24039ddbf813f1a447891312506de87)
+        ;
+
+        
+    
+    
+            marker_465fb8d5b486f9e4623d402af7bacd1b.bindTooltip(
+                `<div>
+                     <b>Quail Hollow Ranch County Park</b>
+                 </div>`,
+                {
+  "sticky": true,
+}
+            );
+        
+    
+                marker_465fb8d5b486f9e4623d402af7bacd1b.setIcon(icon_fb85f2d3fe7cdedac0cf9e2c295e73ea);
+            
+    
+            var marker_deeb478936629dbe1b8c0b8e41e4b294 = L.marker(
+                [37.069449, -122.05537],
+                {
+}
+            ).addTo(map_33bae57669c7b8e5607176eb3414ef77);
+        
+    
+            var icon_60899bd95c69e41e583333efd4d4875e = L.AwesomeMarkers.icon(
+                {
+  "markerColor": "blue",
+  "iconColor": "white",
+  "icon": "star",
+  "prefix": "glyphicon",
+  "extraClasses": "fa-rotate-0",
+}
+            );
+        
+    
+        var popup_8c5e46a94b53c87b356c74a6fe918176 = L.popup({
+  "maxWidth": 300,
+});
+
+        
+            
+                var html_0b1bc63334f62ef9029c096e4d06d7b6 = $(`<div id="html_0b1bc63334f62ef9029c096e4d06d7b6" style="width: 100.0%; height: 100.0%;"><b>Olympia Watershed (trail entrance)</b><br>Olympia Watershed trail entrance / start of the historic SP Olympia Branch rail trail segment.</div>`)[0];
+                popup_8c5e46a94b53c87b356c74a6fe918176.setContent(html_0b1bc63334f62ef9029c096e4d06d7b6);
+            
+        
+
+        marker_deeb478936629dbe1b8c0b8e41e4b294.bindPopup(popup_8c5e46a94b53c87b356c74a6fe918176)
+        ;
+
+        
+    
+    
+            marker_deeb478936629dbe1b8c0b8e41e4b294.bindTooltip(
+                `<div>
+                     <b>Olympia Watershed (trail entrance)</b>
+                 </div>`,
+                {
+  "sticky": true,
+}
+            );
+        
+    
+                marker_deeb478936629dbe1b8c0b8e41e4b294.setIcon(icon_60899bd95c69e41e583333efd4d4875e);
+            
+    
+            L.control.fullscreen(
+                {
+  "position": "topleft",
+  "title": "Full Screen",
+  "titleCancel": "Exit Full Screen",
+  "forceSeparateButton": false,
+}
+            ).addTo(map_33bae57669c7b8e5607176eb3414ef77);
+        
+    
+            var measure_control_1ef665d9b663b7216f0923914eb79671 = new L.Control.Measure(
+                {
+  "position": "topright",
+  "primaryLengthUnit": "miles",
+  "secondaryLengthUnit": "kilometers",
+  "primaryAreaUnit": "sqmeters",
+  "secondaryAreaUnit": "acres",
+});
+            map_33bae57669c7b8e5607176eb3414ef77.addControl(measure_control_1ef665d9b663b7216f0923914eb79671);
+
+            // Workaround for using this plugin with Leaflet>=1.8.0
+            // https://github.com/ljagis/leaflet-measure/issues/171
+            L.Control.Measure.include({
+                _setCaptureMarkerIcon: function () {
+                    // disable autopan
+                    this._captureMarker.options.autoPanOnFocus = false;
+                    // default function
+                    this._captureMarker.setIcon(
+                        L.divIcon({
+                            iconSize: this._map.getSize().multiplyBy(2)
+                        })
+                    );
+                },
+            });
+
+        
+    
+            var layer_control_2e2127f4f01bef0d0aab121e3ad8c446_layers = {
+                base_layers : {
+                    "openstreetmap" : tile_layer_47b8ee8e3b6a3966efd48f8c9bf2063c,
+                    "ESRI Topo" : tile_layer_d6d341992774b80c9e777ad60c0030ce,
+                    "ESRI Satellite" : tile_layer_e72d5e7cd0259d776bfdc95ad6484571,
+                    "OpenStreetMap" : tile_layer_2e269128088ebd407f53d15a086d03e3,
+                },
+                overlays :  {
+                },
+            };
+            let layer_control_2e2127f4f01bef0d0aab121e3ad8c446 = L.control.layers(
+                layer_control_2e2127f4f01bef0d0aab121e3ad8c446_layers.base_layers,
+                layer_control_2e2127f4f01bef0d0aab121e3ad8c446_layers.overlays,
+                {
+  "position": "topright",
+  "collapsed": true,
+  "autoZIndex": true,
+}
+            ).addTo(map_33bae57669c7b8e5607176eb3414ef77);
+
+        
+</script>
+</html>
