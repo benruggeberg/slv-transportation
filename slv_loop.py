@@ -631,9 +631,7 @@ sidebar_html = f"""
           {elev_abs_min}–{elev_abs_max} ft &nbsp;·&nbsp; +{elev_gain} ft gain
         </span>
       </div>
-      <div style="position:relative;height:80px;">
-        <canvas id="elevChart"></canvas>
-      </div>
+      <canvas id="elevChart" height="90" style="width:100%;"></canvas>
     </div>
   </div>
   <button id="slv-toggle">◀</button>
@@ -661,20 +659,24 @@ sidebar_html = f"""
   btn.addEventListener('click', function() {{ sb.dataset.c === '1' ? expand() : collapse(); }});
 
   // Map dot that tracks elevation profile hover
-  var leafletMap = window['{map_var}'];
   var coords = {coords_js};
-  var hoverDot = L.circleMarker([0, 0], {{
-    radius: 8, color: '#fff', weight: 2.5,
-    fillColor: '#2980B9', fillOpacity: 0, opacity: 0,
-    interactive: false
-  }}).addTo(leafletMap);
+  var hoverDot = null;
+  try {{
+    var leafletMap = window['{map_var}'];
+    hoverDot = L.circleMarker([0, 0], {{
+      radius: 8, color: '#fff', weight: 2.5,
+      fillColor: '#2980B9', fillOpacity: 0, opacity: 0,
+      interactive: false
+    }}).addTo(leafletMap);
+  }} catch(e) {{ console.warn('Hover dot init failed:', e); }}
 
   function showDot(idx) {{
+    if (!hoverDot) return;
     hoverDot.setLatLng(coords[idx]);
     hoverDot.setStyle({{ opacity: 1, fillOpacity: 0.9 }});
   }}
   function hideDot() {{
-    hoverDot.setStyle({{ opacity: 0, fillOpacity: 0 }});
+    if (hoverDot) hoverDot.setStyle({{ opacity: 0, fillOpacity: 0 }});
   }}
 
   document.getElementById('elevChart').addEventListener('mouseleave', hideDot);
@@ -697,8 +699,6 @@ sidebar_html = f"""
       }}]
     }},
     options: {{
-      responsive: true,
-      maintainAspectRatio: false,
       animation: false,
       onHover: function(event, activeEls) {{
         if (activeEls.length) {{ showDot(activeEls[0].index); }}
