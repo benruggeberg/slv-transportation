@@ -485,6 +485,8 @@ print("\nComputing road-network catchment overlays …")
 _MI_M = 1609.34
 CATCH_DISTANCES = [0.25, 0.50, 1.00]
 CATCH_BUFFER_M = 45  # half-width (m) of the road-network buffer swath
+CATCH_CLOSE_M = 110  # morphological-closing radius: merges small gaps/slivers
+                      # between nearby-but-not-touching buffered road swaths
 
 _Gu_proj = ox.projection.project_graph(Gu)
 _, _edges_proj = ox.convert.graph_to_gdfs(_Gu_proj)
@@ -518,8 +520,12 @@ def _catchment_polygon(route_coords_list, distance_mi):
     lines = _edges_proj.loc[mask, "geometry"].tolist()
     if not lines:
         return None
-    swath = unary_union(lines).buffer(CATCH_BUFFER_M).simplify(
-        8, preserve_topology=True)  # collapse buffer-join vertex bloat
+    swath = unary_union(lines).buffer(CATCH_BUFFER_M)
+    # Morphological closing (dilate then erode) fuses small gaps/triangular
+    # slivers between adjacent-but-not-quite-touching road swaths into one
+    # contiguous shape, instead of a patchwork of near-misses.
+    swath = swath.buffer(CATCH_CLOSE_M).buffer(-CATCH_CLOSE_M)
+    swath = swath.simplify(8, preserve_topology=True)
     return gpd.GeoSeries([swath], crs=_edges_proj.crs).to_crs(epsg=4326).iloc[0]
 
 
@@ -1002,17 +1008,26 @@ density_layer.add_to(m)
 # "Branch proposals" layer is toggled on or off (see CATCHMENT_DATA, computed
 # above). Each ring is one FeatureGroup/checkbox; a small injected script
 # swaps its GeoJSON data and legend text when the branch layer is toggled.
-CATCHMENT_COLORS = {0.25: "#3182BD", 0.50: "#E6550D", 1.00: "#6A3D9A"}
+CATCHMENT_COLOR = "#6A3D9A"  # same color for all 3 rings; only extent differs
 _catch_specs = []
 for cd in CATCHMENT_DATA:
-    dist, color = cd["dist"], CATCHMENT_COLORS[cd["dist"]]
+    dist, color = cd["dist"], CATCHMENT_COLOR
     label = f"{dist:.2f} mi road catchment"
     fg = folium.FeatureGroup(name=label, show=False)
-    # Start empty — the injected toggle script (below) populates it via
-    # addData() on load, so the (large) polygon data lives only once, in
-    # the rings blob, instead of being serialized here too.
+    # Seed with a single throwaway point feature (never actually shown — the
+    # injected toggle script clears and repopulates via addData() on load)
+    # rather than a truly empty FeatureCollection. Folium bakes style_function
+    # into a per-feature-id JS switch statement at *construction* time; with
+    # zero features present, that switch has no cases and its `default:`
+    # returns nothing, so anything added later via addData() renders with
+    # Leaflet's plain default style instead of our custom color/dash. One
+    # feature is enough for folium to compute a real default-case style,
+    # which then correctly applies to all real features added afterward —
+    # without duplicating the (large) polygon data here too.
     gj = folium.GeoJson(
-        {"type": "FeatureCollection", "features": []},
+        {"type": "FeatureCollection", "features": [
+            {"type": "Feature", "properties": {}, "geometry": {"type": "Point", "coordinates": [0, 0]}},
+        ]},
         style_function=lambda f, col=color: {
             "fillColor": col, "fillOpacity": 0.25, "color": col,
             "weight": 2, "dashArray": "6 4", "opacity": 0.85,
@@ -1070,30 +1085,43 @@ window.addEventListener('load', function() {{
   {_catch_legend_setup}
   var legends = {{ {",".join(f'"{c["legend_id"]}": {c["legend_var"]}' for c in _catch_specs)} }};
 
+  // Single source of truth for "are branches currently on?" — both the
+  // branch-layer toggle AND each ring's own toggle read this, so the
+  // population figure is always correct regardless of which order the
+  // user checks boxes in, and appears immediately (not only after the
+  // next branch toggle).
+  var branchesOn = true;  // matches branch_layer's default show=True
+
   function fmtPop(n) {{ return '~' + n.toLocaleString() + ' residents'; }}
 
+  function updateRingPop(r) {{
+    var popEl = document.getElementById(r.legend_id + '-pop');
+    if (popEl) {{ popEl.innerHTML = fmtPop(branchesOn ? r.pop_with : r.pop_without); }}
+  }}
+
   function applyState(withBranches) {{
+    branchesOn = withBranches;
     rings.forEach(function(r) {{
       var gj = window[r.gj_var];
       var data = withBranches ? r.data_with : r.data_without;
-      var pop  = withBranches ? r.pop_with  : r.pop_without;
       if (data) {{ gj.clearLayers(); gj.addData(data); }}
-      var popEl = document.getElementById(r.legend_id + '-pop');
-      if (popEl) {{ popEl.innerHTML = fmtPop(pop); }}
+      updateRingPop(r);
     }});
   }}
 
   rings.forEach(function(r) {{
     var fg = window[r.fg_var];
     var legend = legends[r.legend_id];
-    leafletMap.on('overlayadd', function(e) {{ if (e.layer === fg) legend.addTo(leafletMap); }});
+    leafletMap.on('overlayadd', function(e) {{
+      if (e.layer === fg) {{ legend.addTo(leafletMap); updateRingPop(r); }}
+    }});
     leafletMap.on('overlayremove', function(e) {{ if (e.layer === fg) legend.remove(); }});
   }});
 
   leafletMap.on('overlayadd', function(e) {{ if (e.layer === branchLayer) applyState(true); }});
   leafletMap.on('overlayremove', function(e) {{ if (e.layer === branchLayer) applyState(false); }});
 
-  applyState(true);  // matches branch_layer's default show=True
+  applyState(true);  // seed all rings' data/labels before any are shown
 }});
 </script>
 """
