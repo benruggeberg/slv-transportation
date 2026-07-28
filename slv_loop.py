@@ -495,6 +495,15 @@ _density_gdf = gpd.read_file(os.path.join(
     os.path.dirname(os.path.abspath(__file__)), "data", "density_blocks.geojson"))
 _density_proj = _density_gdf.to_crs(_edges_proj.crs)
 
+# Mask of populated census blocks only — the road-network buffer alone
+# includes plenty of land nobody lives on (quarries, state-park land, etc.);
+# clipping to this excludes those from the catchment shape entirely rather
+# than just leaving them uncounted in the population figure.
+_populated_mask = unary_union([
+    geom for geom, pop in zip(_density_proj.geometry, _density_proj["POP100"])
+    if pop and pop > 0 and geom is not None and not geom.is_empty
+])
+
 
 def _reachable_nodes(route_coords_list, cutoff_m):
     sample_pts = []
@@ -526,6 +535,13 @@ def _catchment_polygon(route_coords_list, distance_mi):
     # contiguous shape, instead of a patchwork of near-misses.
     swath = swath.buffer(CATCH_CLOSE_M).buffer(-CATCH_CLOSE_M)
     swath = swath.simplify(8, preserve_topology=True)
+    # Clip to populated blocks only, as the LAST step — reachable-by-road
+    # isn't the same as lived-in (quarries, park/forest land, etc. shouldn't
+    # be shaded). Doing this after simplify() means the simplification
+    # tolerance can't nudge the boundary back out past the block edge.
+    swath = swath.intersection(_populated_mask)
+    if swath.is_empty:
+        return None
     return gpd.GeoSeries([swath], crs=_edges_proj.crs).to_crs(epsg=4326).iloc[0]
 
 
