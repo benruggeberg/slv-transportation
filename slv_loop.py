@@ -1,10 +1,10 @@
 #!/usr/bin/env python3
 """
-SLV Multi-Use Path Loop (v6 — 8 segments)
+SLV Multi-Use Path Loop (v7 — 8 segments + 3 proposed branches)
 Proposed active-transportation loop, San Lorenzo Valley, Santa Cruz County, CA
 All distances in miles.
 
-8 segments:
+8 main-loop segments:
   1  Graham Hill Rd (RAIL_END → Hwy 9 / Felton Empire, via Covered Bridge Park)
   2  Hwy 9 west-side path N — Caltrans 05-1M400 (→ SLV High School entrance)
   3  Hwy 9 west-side path continuing N (→ Highlands County Park entrance)
@@ -12,14 +12,23 @@ All distances in miles.
   5  Proposed pedestrian bridge (2-pt straight line across San Lorenzo River)
   6  Maple Ave (bridge east landing → Glen Arbor Rd)
   7  Quail Hollow Rd (Glen Arbor Rd east → Olympia Station Rd)
-  8  Historic SP Olympia Branch rail trail (→ Graham Hill Rd crossing)
+  8  Historic SP Olympia Branch rail trail (→ Graham Hill Rd crossing) — solid
+
+3 proposed branches (dashed, toggleable "Branch proposals" layer):
+  1  Hwy 9 Bike Lanes (Class II) — Graham Hill Rd → Glengarry Rd
+  2  Glen Arbor Rd Bike Lanes (Class II) — corrected start point → Hwy 9 (Ben Lomond)
+  3  Felton Empire Rd Multi-Use Path (Class I) — Hwy 9 → Fetherston Way
+
+Also renders (toggleable, off by default): 2020 Census population density
+choropleth, and 0.25/0.50/1.00 mi road-network catchment overlays, loaded
+from the static GeoJSON files in data/.
 
 Outputs:
   slv_loop_map.html   — interactive folium map
-  slv_loop.geojson    — GeoJSON (all segments + destinations)
+  slv_loop.geojson    — GeoJSON (all segments, branches + destinations)
 """
 
-import json, math, warnings
+import json, math, os, warnings
 import osmnx as ox
 import networkx as nx
 import folium
@@ -387,11 +396,54 @@ SEGS = [
          coords=seg7_8_coords),
 
     dict(n=8,  label="Historic SP Olympia Branch (proposed rail trail)",
-         color="#795548", dash="5 8",
+         color="#795548", dash=None,
          desc=("Historic Southern Pacific / Santa Cruz, Big Trees & Pacific Railway "
                "Olympia Branch alignment — proposed rail trail southwest "
                "to the Graham Hill Rd crossing"),
          coords=rail_coords),
+]
+
+# ── Proposed bikeway branch overlays ──────────────────────────────────────────
+# Previously maintained only as hand-written Leaflet JS patched directly into
+# slv_loop_map.html; ported here so the generator script is the single source
+# of truth and these survive a regeneration.
+BRANCH_DASH = "10 5"
+
+# Branch 1: Hwy 9 bike lanes (Class II) — Graham Hill Rd → Glengarry Rd
+_b1_raw = [
+    (37.052938,-122.073255),(37.052829,-122.073241),(37.052675,-122.073219),(37.052476,-122.073214),(37.052103,-122.073236),(37.052008,-122.073243),(37.051758,-122.073251),(37.051670,-122.073253),(37.051302,-122.073269),(37.051204,-122.073271),(37.051147,-122.073272),(37.050881,-122.073280),(37.050834,-122.073282),(37.050695,-122.073287),(37.050515,-122.073293),(37.050456,-122.073295),(37.050403,-122.073297),(37.050327,-122.073299),(37.050032,-122.073309),(37.049842,-122.073314),(37.049805,-122.073317),(37.049675,-122.073322),(37.049606,-122.073323),(37.049566,-122.073324),(37.049512,-122.073325),(37.049099,-122.073341),(37.049080,-122.073342),(37.048984,-122.073345),(37.048643,-122.073354),(37.048507,-122.073359),(37.048300,-122.073366),(37.048102,-122.073372),(37.047861,-122.073379),(37.047850,-122.073379),(37.047842,-122.073379),(37.047471,-122.073388),(37.047249,-122.073393),(37.047042,-122.073399),(37.046818,-122.073406),(37.046658,-122.073410),(37.046411,-122.073424),(37.046022,-122.073445),(37.045980,-122.073446),(37.045729,-122.073455),(37.045411,-122.073435),(37.045285,-122.073425),(37.045151,-122.073387),(37.044935,-122.073314),(37.044698,-122.073222),(37.044492,-122.073144),(37.044077,-122.072992),(37.043894,-122.072916),(37.043812,-122.072887),(37.043563,-122.072821),(37.043320,-122.072791),(37.042318,-122.072705),(37.042226,-122.072698),(37.042122,-122.072683),(37.041992,-122.072653),(37.041858,-122.072622),(37.041714,-122.072556),(37.041118,-122.072204),(37.040835,-122.072038),(37.040734,-122.071962),(37.040634,-122.071874),(37.040491,-122.071732),(37.040375,-122.071584),(37.040063,-122.071080),(37.039653,-122.070344),(37.039529,-122.070167),(37.039189,-122.069733),(37.038957,-122.069402),(37.038833,-122.069174),(37.038743,-122.068933),(37.038505,-122.068111),(37.038450,-122.067950),(37.038391,-122.067795),(37.038325,-122.067654),(37.038160,-122.067376),(37.038057,-122.067236),(37.037607,-122.066662),(37.037318,-122.066373),(37.037093,-122.066149),(37.037033,-122.066089),(37.036776,-122.065839),(37.036644,-122.065710),(37.036341,-122.065520),(37.035962,-122.065295),(37.035791,-122.065170),(37.035571,-122.065042),(37.035457,-122.064883),(37.035294,-122.064708),(37.034936,-122.064325),(37.034894,-122.064295),(37.034751,-122.064198),(37.034602,-122.064122),(37.034379,-122.064039),(37.034113,-122.063939),(37.033955,-122.063817),(37.033798,-122.063673),(37.033663,-122.063516),(37.033602,-122.063436),(37.033542,-122.063359),(37.033480,-122.063274),(37.033114,-122.062873),(37.033036,-122.062819),(37.032958,-122.062782),(37.032882,-122.062767),(37.032810,-122.062764),(37.032774,-122.062770),(37.032735,-122.062777),(37.032685,-122.062795),(37.032640,-122.062820),(37.032606,-122.062848),(37.032571,-122.062881),(37.032489,-122.062973),(37.032430,-122.063063),(37.032371,-122.063155),(37.032311,-122.063270),(37.032254,-122.063391),(37.032100,-122.063830),(37.031951,-122.064352),(37.031933,-122.064499),(37.031918,-122.064641),(37.031899,-122.064847),(37.031885,-122.064933),(37.031876,-122.064970),(37.031865,-122.065006),(37.031840,-122.065068),(37.031812,-122.065116),(37.031765,-122.065170),(37.031740,-122.065190),(37.031712,-122.065206),
+]
+
+# Branch 2: Glen Arbor Rd bike lanes (Class II) — corrected start point:
+# was (37.079196,-122.077799); user-specified corrected alignment now runs
+# from ~(37.081957,-122.078114) to ~(37.088822,-122.088503) — trimmed from
+# the same source geometry via split_at_coord (end point is unchanged).
+_b2_raw = [
+    (37.079196,-122.077799),(37.079382,-122.077706),(37.079601,-122.077639),(37.079749,-122.077610),(37.079923,-122.077592),(37.080084,-122.077601),(37.080243,-122.077615),(37.080454,-122.077662),(37.081125,-122.077869),(37.081237,-122.077904),(37.081464,-122.077974),(37.081919,-122.078093),(37.082178,-122.078168),(37.082423,-122.078245),(37.082629,-122.078334),(37.082751,-122.078418),(37.082863,-122.078518),(37.083000,-122.078659),(37.083115,-122.078792),(37.083217,-122.078943),(37.083312,-122.079112),(37.083378,-122.079266),(37.083431,-122.079419),(37.083463,-122.079561),(37.083673,-122.080919),(37.083798,-122.081536),(37.083869,-122.081882),(37.083898,-122.082024),(37.083947,-122.082161),(37.084009,-122.082297),(37.084041,-122.082354),(37.084078,-122.082420),(37.084146,-122.082509),(37.084351,-122.082737),(37.084587,-122.082901),(37.084771,-122.082995),(37.085372,-122.083255),(37.085446,-122.083288),(37.085767,-122.083432),(37.086688,-122.083881),(37.086833,-122.083952),(37.086885,-122.083977),(37.087557,-122.084329),(37.088369,-122.084800),(37.088438,-122.084865),(37.088481,-122.084933),(37.088510,-122.085006),(37.088540,-122.085090),(37.088991,-122.086499),(37.089020,-122.086605),(37.089031,-122.086715),(37.089029,-122.086847),(37.089019,-122.086946),(37.089002,-122.087046),(37.088899,-122.087388),(37.088841,-122.087680),(37.088802,-122.087874),(37.088798,-122.087899),(37.088784,-122.088001),(37.088777,-122.088099),(37.088776,-122.088196),(37.088784,-122.088275),(37.088805,-122.088494),
+]
+_, b2_coords = split_at_coord(_b2_raw, (37.081957, -122.078114))
+
+# Branch 3: Felton Empire Rd multi-use path (Class I) — Hwy 9 → Fetherston Way
+_b3_raw = [
+    (37.053080,-122.073282),(37.053092,-122.073417),(37.053098,-122.073583),(37.053102,-122.073685),(37.053118,-122.074103),(37.053104,-122.074456),(37.053084,-122.074639),(37.052994,-122.074970),(37.052965,-122.075034),(37.052618,-122.075816),(37.052544,-122.075982),(37.052235,-122.076633),(37.052030,-122.077064),(37.051719,-122.077759),(37.051269,-122.078765),(37.051173,-122.078972),(37.051018,-122.079302),(37.050746,-122.079886),(37.050671,-122.080068),(37.050385,-122.080765),(37.050113,-122.081428),(37.049752,-122.082116),(37.049402,-122.082737),(37.049304,-122.082980),(37.049247,-122.083210),(37.049206,-122.083433),(37.049177,-122.083711),(37.049146,-122.083995),
+]
+
+BRANCHES = [
+    dict(n=1, label="Hwy 9 Bike Lanes", cls="Class II",
+         color="#2166AC", dash=BRANCH_DASH,
+         desc="Proposed Class II bike lanes along Hwy 9, from Graham Hill Rd "
+              "to Glengarry Rd.",
+         coords=_b1_raw),
+    dict(n=2, label="Glen Arbor Rd Bike Lanes", cls="Class II",
+         color="#2166AC", dash=BRANCH_DASH,
+         desc="Proposed Class II bike lanes along Glen Arbor Rd, corrected "
+              "start point, to Hwy 9 (Ben Lomond).",
+         coords=b2_coords),
+    dict(n=3, label="Felton Empire Rd Multi-Use Path", cls="Class I",
+         color="#1A9850", dash=BRANCH_DASH,
+         desc="Proposed multi-use path along Felton Empire Rd, from Hwy 9 "
+              "to Fetherston Way.",
+         coords=_b3_raw),
 ]
 
 # ── Print segment table ───────────────────────────────────────────────────────
@@ -403,6 +455,11 @@ for s in SEGS:
     print(f"{s['n']:2d}  {s['label']:<52}  {d:.2f}")
 print("─" * 62)
 print(f"{'Total':>56}  {total:.2f}")
+
+print(f"\n{'#':>2}  {'Proposed branch':<40}  mi")
+print("─" * 50)
+for b in BRANCHES:
+    print(f"{b['n']:2d}  {b['label']:<40}  {mi(b['coords']):.2f}")
 
 # ── Destinations ──────────────────────────────────────────────────────────────
 slvhs_y, slvhs_x = nd(H9_SLVHS)
@@ -440,6 +497,16 @@ for s in SEGS:
                        "description": s["desc"], "color": s["color"],
                        "dashed": bool(s["dash"]),
                        "length_mi": round(mi(s["coords"]), 3)},
+    })
+for b in BRANCHES:
+    features.append({
+        "type": "Feature",
+        "geometry": {"type": "LineString",
+                     "coordinates": [[lo, la] for la, lo in b["coords"]]},
+        "properties": {"branch_number": b["n"], "label": b["label"],
+                       "description": b["desc"], "color": b["color"],
+                       "bikeway_class": b["cls"], "dashed": bool(b["dash"]),
+                       "length_mi": round(mi(b["coords"]), 3)},
     })
 for d in DESTS:
     features.append({
@@ -492,6 +559,19 @@ for d in DESTS:
         tooltip=f"<b>{d['name']}</b>",
         popup=folium.Popup(f"<b>{d['name']}</b><br>{d['desc']}", max_width=300),
         icon=folium.Icon(color=d["fcolor"], icon="star")).add_to(m)
+
+# ── Proposed branch overlays (toggleable) ─────────────────────────────────────
+branch_layer = folium.FeatureGroup(name="Branch proposals", show=True)
+for b in BRANCHES:
+    b_mi = mi(b["coords"])
+    tip = (f"<b>Branch {b['n']} — {b['label']}</b><br>{b['desc']}<br>"
+           f"<i>{b_mi:.2f} mi · {b['cls']}</i>")
+    folium.PolyLine(
+        locations=b["coords"], color=b["color"], weight=5, opacity=0.85,
+        dash_array=b["dash"], line_cap="round",
+        tooltip=folium.Tooltip(tip, sticky=True),
+        popup=folium.Popup(tip, max_width=360)).add_to(branch_layer)
+branch_layer.add_to(m)
 
 
 def fetch_elevations(pts):
@@ -620,8 +700,11 @@ sidebar_html = f"""
       <hr style="margin:6px 0;border-color:#ccc;">
       {"".join(leg_row(s) for s in SEGS)}
       <hr style="margin:5px 0;border-color:#ccc;">
+      <span style="font-size:10px;color:#666;">Proposed branches (toggle layer)</span>
+      {"".join(leg_row(b) for b in BRANCHES)}
+      <hr style="margin:5px 0;border-color:#ccc;">
       <span style="font-size:10px;color:#888;">
-        &#9733; Key destinations &nbsp;|&nbsp; - - proposed bridge &amp; rail trail
+        &#9733; Key destinations &nbsp;|&nbsp; - - proposed bridge &amp; branches
       </span>
     </div>
     <div id="slv-elev" class="slv-panel">
@@ -742,6 +825,68 @@ sidebar_html = f"""
 </script>
 """
 m.get_root().html.add_child(folium.Element(sidebar_html))
+
+# ── Population density & road-catchment overlays (toggleable, off by default) ─
+# Previously maintained only as hand-written Leaflet JS patched directly into
+# slv_loop_map.html (2020 Census block data + pre-computed road-network buffer
+# polygons); ported here as static sidecar GeoJSON so the generator script is
+# the single source of truth and these survive a regeneration.
+_data_dir = os.path.join(os.path.dirname(os.path.abspath(__file__)), "data")
+
+
+def _load_geojson(fname):
+    with open(os.path.join(_data_dir, fname)) as fh:
+        return json.load(fh)
+
+
+_YL_OR_RD = [(255, 255, 178), (254, 204, 92), (253, 141, 60),
+             (240, 59, 32), (189, 0, 38)]
+
+
+def _density_color(d):
+    if not d or d <= 0:
+        return "rgba(200,200,200,0)"
+    t = min(1.0, max(0.0, math.log10(max(d, 1)) / math.log10(10000)))
+    idx = t * (len(_YL_OR_RD) - 1)
+    lo, hi = int(idx), min(int(idx) + 1, len(_YL_OR_RD) - 1)
+    f = idx - lo
+    r = round(_YL_OR_RD[lo][0] + f * (_YL_OR_RD[hi][0] - _YL_OR_RD[lo][0]))
+    g = round(_YL_OR_RD[lo][1] + f * (_YL_OR_RD[hi][1] - _YL_OR_RD[lo][1]))
+    b = round(_YL_OR_RD[lo][2] + f * (_YL_OR_RD[hi][2] - _YL_OR_RD[lo][2]))
+    return f"rgba({r},{g},{b},0.68)"
+
+
+density_layer = folium.FeatureGroup(name="Population Density", show=False)
+folium.GeoJson(
+    _load_geojson("density_blocks.geojson"),
+    style_function=lambda f: {
+        "fillColor": _density_color(f["properties"]["density"]),
+        "fillOpacity": 1, "color": "transparent", "weight": 0,
+    },
+    tooltip=folium.GeoJsonTooltip(fields=["density", "POP100"],
+                                   aliases=["Persons / sq mi", "Residents"]),
+).add_to(density_layer)
+density_layer.add_to(m)
+
+CATCHMENTS = [
+    dict(file="catchment_025mi.geojson", name="0.25 mi road catchment",
+         pop=4831, color="#3182BD"),
+    dict(file="catchment_050mi.geojson", name="0.50 mi road catchment",
+         pop=6826, color="#E6550D"),
+    dict(file="catchment_100mi.geojson", name="1.00 mi road catchment",
+         pop=9190, color="#6A3D9A"),
+]
+for c in CATCHMENTS:
+    catch_layer = folium.FeatureGroup(
+        name=f"{c['name']} (~{c['pop']:,} residents)", show=False)
+    folium.GeoJson(
+        _load_geojson(c["file"]),
+        style_function=lambda f, col=c["color"]: {
+            "fillColor": col, "fillOpacity": 0.25, "color": col,
+            "weight": 2, "dashArray": "6 4", "opacity": 0.85,
+        },
+    ).add_to(catch_layer)
+    catch_layer.add_to(m)
 
 Fullscreen().add_to(m)
 MeasureControl(position="topright", primary_length_unit="miles",
