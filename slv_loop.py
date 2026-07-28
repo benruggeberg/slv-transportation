@@ -149,6 +149,24 @@ def mi(coords):
     return total * 0.621371
 
 
+def path_midpoint(coords):
+    """Point at half the path's total length — unlike coords[len//2], this
+    lands on the true geometric middle even for a 2-point straight line."""
+    if not coords:
+        return None
+    if len(coords) == 1:
+        return coords[0]
+    half = mi(coords) / 2
+    acc = 0.0
+    for (la1, lo1), (la2, lo2) in zip(coords[:-1], coords[1:]):
+        leg = mi([(la1, lo1), (la2, lo2)])
+        if acc + leg >= half:
+            frac = (half - acc) / leg if leg > 0 else 0.0
+            return (la1 + (la2 - la1) * frac, lo1 + (lo2 - lo1) * frac)
+        acc += leg
+    return coords[-1]
+
+
 def split_at_coord(route_pts, target):
     """Split route at point closest to target (lat, lon).
     Returns (segment_up_to_split_inclusive, segment_from_split_inclusive)."""
@@ -648,7 +666,7 @@ def _render_seg(s, label_prefix="Seg"):
         kw["dash_array"] = s["dash"]
     folium.PolyLine(**kw).add_to(m)
     if s["coords"]:
-        mid = s["coords"][len(s["coords"]) // 2]
+        mid = path_midpoint(s["coords"])
         folium.Marker(
             mid,
             icon=folium.DivIcon(
@@ -1042,7 +1060,10 @@ catch_toggle_js = f"""
 }}
 </style>
 <script>
-(function() {{
+window.addEventListener('load', function() {{
+  // Deferred to window 'load': this <script> tag is emitted before folium's
+  // own map-building script (which defines map_XXX / geo_json_XXX / etc. as
+  // globals), so referencing them any earlier would hit undefined and throw.
   var leafletMap  = window['{m.get_name()}'];
   var branchLayer = window['{branch_layer.get_name()}'];
   var rings = {_catch_rings_json};
@@ -1073,7 +1094,7 @@ catch_toggle_js = f"""
   leafletMap.on('overlayremove', function(e) {{ if (e.layer === branchLayer) applyState(false); }});
 
   applyState(true);  // matches branch_layer's default show=True
-}})();
+}});
 </script>
 """
 m.get_root().html.add_child(folium.Element(catch_toggle_js))
