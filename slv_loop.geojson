@@ -927,30 +927,6 @@
         "type": "LineString",
         "coordinates": [
           [
-            -122.080086,
-            37.081497
-          ],
-          [
-            -122.079521,
-            37.08189
-          ]
-        ]
-      },
-      "properties": {
-        "segment_number": 5,
-        "label": "Proposed Pedestrian / Bicycle Bridge",
-        "description": "Proposed pedestrian and bicycle bridge across the San Lorenzo River (2-point straight-line placeholder)",
-        "color": "#2980B9",
-        "dashed": true,
-        "length_mi": 0.041
-      }
-    },
-    {
-      "type": "Feature",
-      "geometry": {
-        "type": "LineString",
-        "coordinates": [
-          [
             -122.07952,
             37.081913
           ],
@@ -1017,10 +993,10 @@
         ]
       },
       "properties": {
-        "segment_number": 6,
+        "segment_number": 5,
         "label": "Maple Ave and Glen Arbor Rd",
         "description": "Maple Ave north from the bridge east landing to the Glen Arbor Rd junction",
-        "color": "#16A085",
+        "color": "#2980B9",
         "dashed": false,
         "length_mi": 0.295
       }
@@ -1381,10 +1357,10 @@
         ]
       },
       "properties": {
-        "segment_number": 7,
+        "segment_number": 6,
         "label": "Quail Hollow Rd",
         "description": "Glen Arbor Rd east from Maple Ave, then Quail Hollow Rd south to the Olympia Station Rd / Olympia Watershed trail entrance",
-        "color": "#8E44AD",
+        "color": "#4B0082",
         "dashed": false,
         "length_mi": 2.241
       }
@@ -1833,10 +1809,10 @@
         ]
       },
       "properties": {
-        "segment_number": 8,
+        "segment_number": 7,
         "label": "Historic SP Olympia Branch (proposed rail trail)",
         "description": "Historic Southern Pacific / Santa Cruz, Big Trees & Pacific Railway Olympia Branch alignment \u2014 proposed rail trail southwest to the Graham Hill Rd crossing",
-        "color": "#795548",
+        "color": "#8E44AD",
         "dashed": false,
         "length_mi": 1.955
       }
@@ -2384,7 +2360,7 @@
         "branch_number": 1,
         "label": "Hwy 9 Bike Lanes",
         "description": "Proposed Class II bike lanes along Hwy 9, from Graham Hill Rd to Glengarry Rd.",
-        "color": "#2166AC",
+        "color": "#808080",
         "bikeway_class": "Class II",
         "dashed": true,
         "length_mi": 1.789
@@ -2609,7 +2585,7 @@
         "branch_number": 2,
         "label": "Glen Arbor Rd Bike Lanes",
         "description": "Proposed Class II bike lanes along Glen Arbor Rd, corrected start point, to Hwy 9 (Ben Lomond).",
-        "color": "#2166AC",
+        "color": "#808080",
         "bikeway_class": "Class II",
         "dashed": true,
         "length_mi": 0.85
@@ -2738,10 +2714,34 @@
         "branch_number": 3,
         "label": "Felton Empire Rd Multi-Use Path",
         "description": "Proposed multi-use path along Felton Empire Rd, from Hwy 9 to Fetherston Way.",
-        "color": "#1A9850",
+        "color": "#808080",
         "bikeway_class": "Class I",
         "dashed": true,
         "length_mi": 0.662
+      }
+    },
+    {
+      "type": "Feature",
+      "geometry": {
+        "type": "LineString",
+        "coordinates": [
+          [
+            -122.080086,
+            37.081497
+          ],
+          [
+            -122.079521,
+            37.08189
+          ]
+        ]
+      },
+      "properties": {
+        "kind": "bridge",
+        "label": "Proposed Pedestrian / Bicycle Bridge",
+        "description": "Proposed pedestrian and bicycle bridge across the San Lorenzo River (2-point straight-line placeholder)",
+        "color": "#795548",
+        "dashed": true,
+        "length_mi": 0.041
       }
     },
     {

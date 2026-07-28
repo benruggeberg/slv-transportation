@@ -1,47 +1,55 @@
 #!/usr/bin/env python3
 """
-SLV Multi-Use Path Loop (v7 — 8 segments + 3 proposed branches)
+SLV Multi-Use Path Loop (v8 — 7 segments + standalone bridge + 3 proposed branches)
 Proposed active-transportation loop, San Lorenzo Valley, Santa Cruz County, CA
 All distances in miles.
 
-8 main-loop segments:
+7 main-loop segments:
   1  Graham Hill Rd (RAIL_END → Hwy 9 / Felton Empire, via Covered Bridge Park)
   2  Hwy 9 west-side path N — Caltrans 05-1M400 (→ SLV High School entrance)
   3  Hwy 9 west-side path continuing N (→ Highlands County Park entrance)
   4  Highlands County Park (park path → river bank)
-  5  Proposed pedestrian bridge (2-pt straight line across San Lorenzo River)
-  6  Maple Ave (bridge east landing → Glen Arbor Rd)
-  7  Quail Hollow Rd (Glen Arbor Rd east → Olympia Station Rd)
-  8  Historic SP Olympia Branch rail trail (→ Graham Hill Rd crossing) — solid
+  5  Maple Ave (bridge east landing → Glen Arbor Rd) — blue
+  6  Quail Hollow Rd (Glen Arbor Rd east → Olympia Station Rd) — indigo
+  7  Historic SP Olympia Branch rail trail (→ Graham Hill Rd crossing) — purple, solid
 
-3 proposed branches (dashed, toggleable "Branch proposals" layer):
+Standalone bridge (not part of the numbered segments, brown dashed):
+  Proposed pedestrian/bicycle bridge (2-pt straight line across San Lorenzo River)
+
+3 proposed branches (gray, dashed, toggleable "Branch proposals" layer):
   1  Hwy 9 Bike Lanes (Class II) — Graham Hill Rd → Glengarry Rd
   2  Glen Arbor Rd Bike Lanes (Class II) — corrected start point → Hwy 9 (Ben Lomond)
   3  Felton Empire Rd Multi-Use Path (Class I) — Hwy 9 → Fetherston Way
 
 Also renders (toggleable, off by default): 2020 Census population density
-choropleth, and 0.25/0.50/1.00 mi road-network catchment overlays, loaded
-from the static GeoJSON files in data/.
+choropleth, and 0.25/0.50/1.00 mi road-network catchment overlays. The
+catchment overlays are recomputed from the road network below; their
+shape/population depends on whether the "Branch proposals" layer is
+toggled on or off.
 
 Outputs:
   slv_loop_map.html   — interactive folium map
-  slv_loop.geojson    — GeoJSON (all segments, branches + destinations)
+  slv_loop.geojson    — GeoJSON (all segments, bridge, branches + destinations)
 """
 
 import json, math, os, warnings
 import osmnx as ox
 import networkx as nx
 import folium
+import geopandas as gpd
 import pandas as pd
 import requests as _req
 from folium.plugins import Fullscreen, MeasureControl
+from shapely.ops import unary_union
 
 warnings.filterwarnings("ignore")
 ox.settings.log_console = False
 ox.settings.use_cache = True
 
 # ── Bounding box (osmnx 2.x: left, bottom, right, top) ───────────────────────
-N, S, E, W = 37.097, 37.037, -122.040, -122.098
+# Widened ~1.05 mi beyond the main-loop + bridge extent so the same downloaded
+# network graph can also be used for the 1.00 mi road-network catchment buffer.
+N, S, E, W = 37.102, 37.028, -122.032, -122.103
 BBOX = (W, S, E, N)
 
 # ── Road network ──────────────────────────────────────────────────────────────
@@ -377,31 +385,32 @@ SEGS = [
                "to the San Lorenzo River bank"),
          coords=hi_path),
 
-    dict(n=5,  label="Proposed Pedestrian / Bicycle Bridge",
-         color="#2980B9", dash="10 6",
-         desc=("Proposed pedestrian and bicycle bridge across the San Lorenzo River "
-               "(2-point straight-line placeholder)"),
-         coords=[BRIDGE_W, BRIDGE_E]),
-
-    dict(n=6,  label="Maple Ave and Glen Arbor Rd",
-         color="#16A085", dash=None,
+    dict(n=5,  label="Maple Ave and Glen Arbor Rd",
+         color="#2980B9", dash=None,
          desc=("Maple Ave north from the bridge east landing "
                "to the Glen Arbor Rd junction"),
          coords=seg6_coords),
 
-    dict(n=7,  label="Quail Hollow Rd",
-         color="#8E44AD", dash=None,
+    dict(n=6,  label="Quail Hollow Rd",
+         color="#4B0082", dash=None,
          desc=("Glen Arbor Rd east from Maple Ave, then Quail Hollow Rd south "
                "to the Olympia Station Rd / Olympia Watershed trail entrance"),
          coords=seg7_8_coords),
 
-    dict(n=8,  label="Historic SP Olympia Branch (proposed rail trail)",
-         color="#795548", dash=None,
+    dict(n=7,  label="Historic SP Olympia Branch (proposed rail trail)",
+         color="#8E44AD", dash=None,
          desc=("Historic Southern Pacific / Santa Cruz, Big Trees & Pacific Railway "
                "Olympia Branch alignment — proposed rail trail southwest "
                "to the Graham Hill Rd crossing"),
          coords=rail_coords),
 ]
+
+# ── Proposed bridge (standalone — not part of the numbered main-loop segments)
+BRIDGE = dict(n="B", label="Proposed Pedestrian / Bicycle Bridge",
+              color="#795548", dash="10 6",
+              desc=("Proposed pedestrian and bicycle bridge across the San Lorenzo River "
+                    "(2-point straight-line placeholder)"),
+              coords=[BRIDGE_W, BRIDGE_E])
 
 # ── Proposed bikeway branch overlays ──────────────────────────────────────────
 # Previously maintained only as hand-written Leaflet JS patched directly into
@@ -428,33 +437,121 @@ _b3_raw = [
     (37.053080,-122.073282),(37.053092,-122.073417),(37.053098,-122.073583),(37.053102,-122.073685),(37.053118,-122.074103),(37.053104,-122.074456),(37.053084,-122.074639),(37.052994,-122.074970),(37.052965,-122.075034),(37.052618,-122.075816),(37.052544,-122.075982),(37.052235,-122.076633),(37.052030,-122.077064),(37.051719,-122.077759),(37.051269,-122.078765),(37.051173,-122.078972),(37.051018,-122.079302),(37.050746,-122.079886),(37.050671,-122.080068),(37.050385,-122.080765),(37.050113,-122.081428),(37.049752,-122.082116),(37.049402,-122.082737),(37.049304,-122.082980),(37.049247,-122.083210),(37.049206,-122.083433),(37.049177,-122.083711),(37.049146,-122.083995),
 ]
 
+BRANCH_COLOR = "#808080"  # gray — uniform color for all proposed branches
+
 BRANCHES = [
     dict(n=1, label="Hwy 9 Bike Lanes", cls="Class II",
-         color="#2166AC", dash=BRANCH_DASH,
+         color=BRANCH_COLOR, dash=BRANCH_DASH,
          desc="Proposed Class II bike lanes along Hwy 9, from Graham Hill Rd "
               "to Glengarry Rd.",
          coords=_b1_raw),
     dict(n=2, label="Glen Arbor Rd Bike Lanes", cls="Class II",
-         color="#2166AC", dash=BRANCH_DASH,
+         color=BRANCH_COLOR, dash=BRANCH_DASH,
          desc="Proposed Class II bike lanes along Glen Arbor Rd, corrected "
               "start point, to Hwy 9 (Ben Lomond).",
          coords=b2_coords),
     dict(n=3, label="Felton Empire Rd Multi-Use Path", cls="Class I",
-         color="#1A9850", dash=BRANCH_DASH,
+         color=BRANCH_COLOR, dash=BRANCH_DASH,
          desc="Proposed multi-use path along Felton Empire Rd, from Hwy 9 "
               "to Fetherston Way.",
          coords=_b3_raw),
 ]
 
+# ── Road-network catchment (recomputed; depends on Branch-proposals toggle) ──
+# Both states are computed with the same method so toggling "Branch proposals"
+# on the map produces a self-consistent shape/population change instead of
+# swapping between differently-derived geometries:
+#   with_branches    = main loop + bridge + all 3 proposed branches
+#   without_branches = main loop + bridge only
+print("\nComputing road-network catchment overlays …")
+_MI_M = 1609.34
+CATCH_DISTANCES = [0.25, 0.50, 1.00]
+CATCH_BUFFER_M = 45  # half-width (m) of the road-network buffer swath
+
+_Gu_proj = ox.projection.project_graph(Gu)
+_, _edges_proj = ox.convert.graph_to_gdfs(_Gu_proj)
+
+_density_gdf = gpd.read_file(os.path.join(
+    os.path.dirname(os.path.abspath(__file__)), "data", "density_blocks.geojson"))
+_density_proj = _density_gdf.to_crs(_edges_proj.crs)
+
+
+def _reachable_nodes(route_coords_list, cutoff_m):
+    sample_pts = []
+    for coords in route_coords_list:
+        sample_pts.extend(coords[::4])
+        if coords:
+            sample_pts.append(coords[-1])
+    if not sample_pts:
+        return set()
+    xs = [lo for _, lo in sample_pts]
+    ys = [la for la, _ in sample_pts]
+    sources = set(ox.distance.nearest_nodes(Gu, X=xs, Y=ys))
+    return set(nx.multi_source_dijkstra_path_length(
+        Gu, sources, cutoff=cutoff_m, weight="length"))
+
+
+def _catchment_polygon(route_coords_list, distance_mi):
+    reachable = _reachable_nodes(route_coords_list, distance_mi * _MI_M)
+    if not reachable:
+        return None
+    mask = (_edges_proj.index.get_level_values("u").isin(reachable) |
+            _edges_proj.index.get_level_values("v").isin(reachable))
+    lines = _edges_proj.loc[mask, "geometry"].tolist()
+    if not lines:
+        return None
+    swath = unary_union(lines).buffer(CATCH_BUFFER_M).simplify(
+        8, preserve_topology=True)  # collapse buffer-join vertex bloat
+    return gpd.GeoSeries([swath], crs=_edges_proj.crs).to_crs(epsg=4326).iloc[0]
+
+
+def _catchment_population(poly):
+    if poly is None or poly.is_empty:
+        return 0
+    poly_proj = gpd.GeoSeries([poly], crs=4326).to_crs(_density_proj.crs).iloc[0]
+    total_pop = 0.0
+    for geom, pop in zip(_density_proj.geometry, _density_proj["POP100"]):
+        if pop <= 0 or geom is None or geom.is_empty:
+            continue
+        inter = geom.intersection(poly_proj)
+        if inter.is_empty or geom.area <= 0:
+            continue
+        total_pop += (inter.area / geom.area) * pop
+    return round(total_pop)
+
+
+_main_loop_routes = [s["coords"] for s in SEGS] + [BRIDGE["coords"]]
+_all_routes = _main_loop_routes + [b["coords"] for b in BRANCHES]
+
+CATCHMENT_DATA = []
+for _dist in CATCH_DISTANCES:
+    print(f"  {_dist:.2f} mi …")
+    _poly_with = _catchment_polygon(_all_routes, _dist)
+    _poly_without = _catchment_polygon(_main_loop_routes, _dist)
+    _pop_with = _catchment_population(_poly_with)
+    _pop_without = _catchment_population(_poly_without)
+    print(f"    branches on:  ~{_pop_with:,} residents")
+    print(f"    branches off: ~{_pop_without:,} residents")
+    CATCHMENT_DATA.append(dict(
+        dist=_dist,
+        geo_with=(json.loads(gpd.GeoSeries([_poly_with], crs=4326).to_json())
+                  if _poly_with is not None else None),
+        geo_without=(json.loads(gpd.GeoSeries([_poly_without], crs=4326).to_json())
+                     if _poly_without is not None else None),
+        pop_with=_pop_with, pop_without=_pop_without))
+
 # ── Print segment table ───────────────────────────────────────────────────────
 total = sum(mi(s["coords"]) for s in SEGS)
+bridge_mi = mi(BRIDGE["coords"])
+total_loop = total + bridge_mi
 print(f"\n{'#':>2}  {'Segment':<52}  mi")
 print("─" * 62)
 for s in SEGS:
     d = mi(s["coords"])
     print(f"{s['n']:2d}  {s['label']:<52}  {d:.2f}")
+print(f" {BRIDGE['n']}  {BRIDGE['label']:<52}  {bridge_mi:.2f}  (standalone)")
 print("─" * 62)
-print(f"{'Total':>56}  {total:.2f}")
+print(f"{'Total (loop + bridge)':>56}  {total_loop:.2f}")
 
 print(f"\n{'#':>2}  {'Proposed branch':<40}  mi")
 print("─" * 50)
@@ -508,6 +605,15 @@ for b in BRANCHES:
                        "bikeway_class": b["cls"], "dashed": bool(b["dash"]),
                        "length_mi": round(mi(b["coords"]), 3)},
     })
+features.append({
+    "type": "Feature",
+    "geometry": {"type": "LineString",
+                 "coordinates": [[lo, la] for la, lo in BRIDGE["coords"]]},
+    "properties": {"kind": "bridge", "label": BRIDGE["label"],
+                   "description": BRIDGE["desc"], "color": BRIDGE["color"],
+                   "dashed": bool(BRIDGE["dash"]),
+                   "length_mi": round(mi(BRIDGE["coords"]), 3)},
+})
 for d in DESTS:
     features.append({
         "type": "Feature",
@@ -531,9 +637,9 @@ for tile, attr, name in [
     folium.TileLayer(tile, attr=attr, name=name).add_to(m)
 folium.TileLayer("OpenStreetMap", name="OpenStreetMap").add_to(m)
 
-for s in SEGS:
+def _render_seg(s, label_prefix="Seg"):
     seg_mi = mi(s["coords"])
-    tip = (f"<b>Seg {s['n']}: {s['label']}</b><br>{s['desc']}<br>"
+    tip = (f"<b>{label_prefix} {s['n']}: {s['label']}</b><br>{s['desc']}<br>"
            f"<i>{seg_mi:.2f} mi</i>")
     kw = dict(locations=s["coords"], color=s["color"], weight=7, opacity=0.90,
               tooltip=folium.Tooltip(tip, sticky=True),
@@ -552,6 +658,11 @@ for s in SEGS:
                       f'border:2px solid #fff;box-shadow:1px 1px 3px rgba(0,0,0,.5);">'
                       f'{s["n"]}</div>'),
                 icon_size=(22, 22), icon_anchor=(11, 11))).add_to(m)
+
+
+for s in SEGS:
+    _render_seg(s)
+_render_seg(BRIDGE, label_prefix="Bridge")
 
 for d in DESTS:
     folium.Marker(
@@ -695,10 +806,11 @@ sidebar_html = f"""
     <div id="slv-legend" class="slv-panel">
       <b style="font-size:13px;">SLV Multi-Use Path Loop Proposal</b><br>
       <span style="font-size:10px;color:#666;">
-        San Lorenzo Valley, Santa Cruz County, CA &nbsp;·&nbsp; ~{total:.1f} mi
+        San Lorenzo Valley, Santa Cruz County, CA &nbsp;·&nbsp; ~{total_loop:.1f} mi
       </span>
       <hr style="margin:6px 0;border-color:#ccc;">
       {"".join(leg_row(s) for s in SEGS)}
+      {leg_row(BRIDGE)}
       <hr style="margin:5px 0;border-color:#ccc;">
       <span style="font-size:10px;color:#666;">Proposed branches (toggle layer)</span>
       {"".join(leg_row(b) for b in BRANCHES)}
@@ -868,25 +980,103 @@ folium.GeoJson(
 ).add_to(density_layer)
 density_layer.add_to(m)
 
-CATCHMENTS = [
-    dict(file="catchment_025mi.geojson", name="0.25 mi road catchment",
-         pop=4831, color="#3182BD"),
-    dict(file="catchment_050mi.geojson", name="0.50 mi road catchment",
-         pop=6826, color="#E6550D"),
-    dict(file="catchment_100mi.geojson", name="1.00 mi road catchment",
-         pop=9190, color="#6A3D9A"),
-]
-for c in CATCHMENTS:
-    catch_layer = folium.FeatureGroup(
-        name=f"{c['name']} (~{c['pop']:,} residents)", show=False)
-    folium.GeoJson(
-        _load_geojson(c["file"]),
-        style_function=lambda f, col=c["color"]: {
+# Road-network catchment rings — shape/population depend on whether the
+# "Branch proposals" layer is toggled on or off (see CATCHMENT_DATA, computed
+# above). Each ring is one FeatureGroup/checkbox; a small injected script
+# swaps its GeoJSON data and legend text when the branch layer is toggled.
+CATCHMENT_COLORS = {0.25: "#3182BD", 0.50: "#E6550D", 1.00: "#6A3D9A"}
+_catch_specs = []
+for cd in CATCHMENT_DATA:
+    dist, color = cd["dist"], CATCHMENT_COLORS[cd["dist"]]
+    label = f"{dist:.2f} mi road catchment"
+    fg = folium.FeatureGroup(name=label, show=False)
+    # Start empty — the injected toggle script (below) populates it via
+    # addData() on load, so the (large) polygon data lives only once, in
+    # the rings blob, instead of being serialized here too.
+    gj = folium.GeoJson(
+        {"type": "FeatureCollection", "features": []},
+        style_function=lambda f, col=color: {
             "fillColor": col, "fillOpacity": 0.25, "color": col,
             "weight": 2, "dashArray": "6 4", "opacity": 0.85,
         },
-    ).add_to(catch_layer)
-    catch_layer.add_to(m)
+    )
+    gj.add_to(fg)
+    fg.add_to(m)
+    _slug = str(dist).replace(".", "")
+    _catch_specs.append(dict(
+        legend_id=f"catch-legend-{_slug}",       # HTML element id (hyphens OK)
+        legend_var=f"catchLegend{_slug}",        # JS variable name (no hyphens)
+        label=label, color=color, dist=dist,
+        gj_var=gj.get_name(), fg_var=fg.get_name(),
+        data_with=cd["geo_with"], data_without=cd["geo_without"],
+        pop_with=cd["pop_with"], pop_without=cd["pop_without"]))
+
+_catch_legend_setup = "\n".join(f"""
+  var {c['legend_var']} = L.control({{position: 'bottomright'}});
+  {c['legend_var']}.onAdd = function() {{
+    var div = L.DomUtil.create('div', 'density-legend');
+    div.innerHTML =
+      '<b style="font-size:11px;">{c['label']}</b>' +
+      '<div style="margin-top:4px;font-size:11px;">' +
+      '  <span style="display:inline-block;width:14px;height:14px;background:{c['color']}33;' +
+      '  border:1.5px dashed {c['color']};vertical-align:middle;margin-right:5px;"></span>' +
+      '  Area within {c['dist']:.2f} mi by road' +
+      '</div>' +
+      '<div id="{c['legend_id']}-pop" style="margin-top:3px;font-size:12px;font-weight:bold;color:{c['color']};"></div>' +
+      '<div style="font-size:9px;color:#888;margin-top:2px;">2020 Census, area-weighted · depends on Branch proposals toggle</div>';
+    return div;
+  }};""" for c in _catch_specs)
+
+_catch_rings_json = json.dumps([
+    {k: c[k] for k in ("gj_var", "fg_var", "legend_id", "data_with",
+                       "data_without", "pop_with", "pop_without")}
+    for c in _catch_specs
+])
+
+catch_toggle_js = f"""
+<style>
+.density-legend {{
+  background: white; padding: 8px 10px; border-radius: 6px;
+  border: 1px solid #aaa; font-family: Arial, sans-serif; font-size: 11px;
+  box-shadow: 2px 2px 6px rgba(0,0,0,0.25); line-height: 1.4; min-width: 150px;
+}}
+</style>
+<script>
+(function() {{
+  var leafletMap  = window['{m.get_name()}'];
+  var branchLayer = window['{branch_layer.get_name()}'];
+  var rings = {_catch_rings_json};
+  {_catch_legend_setup}
+  var legends = {{ {",".join(f'"{c["legend_id"]}": {c["legend_var"]}' for c in _catch_specs)} }};
+
+  function fmtPop(n) {{ return '~' + n.toLocaleString() + ' residents'; }}
+
+  function applyState(withBranches) {{
+    rings.forEach(function(r) {{
+      var gj = window[r.gj_var];
+      var data = withBranches ? r.data_with : r.data_without;
+      var pop  = withBranches ? r.pop_with  : r.pop_without;
+      if (data) {{ gj.clearLayers(); gj.addData(data); }}
+      var popEl = document.getElementById(r.legend_id + '-pop');
+      if (popEl) {{ popEl.innerHTML = fmtPop(pop); }}
+    }});
+  }}
+
+  rings.forEach(function(r) {{
+    var fg = window[r.fg_var];
+    var legend = legends[r.legend_id];
+    leafletMap.on('overlayadd', function(e) {{ if (e.layer === fg) legend.addTo(leafletMap); }});
+    leafletMap.on('overlayremove', function(e) {{ if (e.layer === fg) legend.remove(); }});
+  }});
+
+  leafletMap.on('overlayadd', function(e) {{ if (e.layer === branchLayer) applyState(true); }});
+  leafletMap.on('overlayremove', function(e) {{ if (e.layer === branchLayer) applyState(false); }});
+
+  applyState(true);  // matches branch_layer's default show=True
+}})();
+</script>
+"""
+m.get_root().html.add_child(folium.Element(catch_toggle_js))
 
 Fullscreen().add_to(m)
 MeasureControl(position="topright", primary_length_unit="miles",
@@ -895,4 +1085,5 @@ folium.LayerControl(position="topright").add_to(m)
 
 m.save("slv_loop_map.html")
 print("  → slv_loop_map.html")
-print(f"\n✓  Done  —  {total:.1f} mi loop, 8 segments")
+print(f"\n✓  Done  —  {total_loop:.1f} mi loop, {len(SEGS)} segments + bridge, "
+      f"{len(BRANCHES)} proposed branches")
