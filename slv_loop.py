@@ -36,20 +36,16 @@ import json, math, os, warnings
 import osmnx as ox
 import networkx as nx
 import folium
-import geopandas as gpd
 import pandas as pd
 import requests as _req
 from folium.plugins import Fullscreen, MeasureControl
-from shapely.ops import unary_union
 
 warnings.filterwarnings("ignore")
 ox.settings.log_console = False
 ox.settings.use_cache = True
 
 # ── Bounding box (osmnx 2.x: left, bottom, right, top) ───────────────────────
-# Widened ~1.05 mi beyond the main-loop + bridge extent so the same downloaded
-# network graph can also be used for the 1.00 mi road-network catchment buffer.
-N, S, E, W = 37.102, 37.028, -122.032, -122.103
+N, S, E, W = 37.097, 37.037, -122.040, -122.098
 BBOX = (W, S, E, N)
 
 # ── Road network ──────────────────────────────────────────────────────────────
@@ -475,201 +471,30 @@ BRANCHES = [
          coords=_b3_raw),
 ]
 
-# ── Road-network catchment (recomputed; depends on Branch-proposals toggle) ──
-# Both states are computed with the same method so toggling "Branch proposals"
-# on the map produces a self-consistent shape/population change instead of
-# swapping between differently-derived geometries:
-#   with_branches    = main loop + bridge + all 3 proposed branches
-#   without_branches = main loop + bridge only
-print("\nComputing road-network catchment overlays …")
-_MI_M = 1609.34
-CATCH_DISTANCES = [0.25, 0.50, 1.00]
-CATCH_BUFFER_M = 45   # half-width (m) of the road buffer ribbon itself
-CATCH_CLOSE_M = 70    # morphological-closing radius: merges same-neighborhood
-                       # buildings/road segments into one contiguous shape
-BUILDING_BUFFER_M = 35  # parcel-ish buffer around each building footprint
-MAX_BUILDING_GAP_M = 120  # ignore buildings set back further than this from
-                           # the nearest road node (driveways, not "connected")
+# ── Road-network catchment (static, restored from the original hand-built
+# overlay) ─────────────────────────────────────────────────────────────────
+# This geometry was never computed by this script — it (and the density
+# choropleth) was hand-patched directly into slv_loop_map.html across
+# several early commits, by a process/tool outside this repo. Several
+# attempts to recompute it programmatically (census-block clipping, then a
+# building-footprint + network-distance model) all diverged visually from
+# that original and introduced their own artifacts. Restored verbatim here
+# from git history (commit 58d41b2, the last one where it was hand-edited)
+# instead: same shape, same population figures as the live site.
+print("\nLoading road-network catchment overlays …")
+_data_dir = os.path.join(os.path.dirname(os.path.abspath(__file__)), "data")
 
-_Gu_proj = ox.projection.project_graph(Gu)
-_nodes_proj, _edges_proj = ox.convert.graph_to_gdfs(_Gu_proj)
 
-_density_gdf = gpd.read_file(os.path.join(
-    os.path.dirname(os.path.abspath(__file__)), "data", "density_blocks.geojson"))
-_density_proj = _density_gdf.to_crs(_edges_proj.crs)
+def _load_geojson(fname):
+    with open(os.path.join(_data_dir, fname)) as fh:
+        return json.load(fh)
 
-# Mask of populated census blocks (POP100 > 0) — used below as a filter on
-# which buildings count, not as the catchment shape itself.
-_populated_mask = unary_union([
-    geom for geom, pop in zip(_density_proj.geometry, _density_proj["POP100"])
-    if pop and pop > 0 and geom is not None and not geom.is_empty
-])
 
-# Explicitly named parks/quarries/protected areas to subtract at the end.
-# Census-block and building heuristics alone can't cleanly separate these:
-# a park boundary can overlap a census block whose actual residents live
-# elsewhere in that same (large, oddly-shaped) block, so population/building
-# proxies alone still leak a park's own area in. Deliberately excludes
-# landuse=forest, since large stretches of genuinely lived-in SLV are
-# wooded and would wrongly disappear too.
-print("  Fetching parks/quarries/protected areas to exclude …")
-_exclude_geoms = []
-for tags in ({"leisure": ["park", "nature_reserve"]},
-             {"landuse": "quarry"},
-             {"boundary": "protected_area"}):
-    try:
-        _g = ox.features_from_bbox(bbox=BBOX, tags=tags)
-    except Exception:
-        continue
-    _g = _g[_g.geometry.type.isin(["Polygon", "MultiPolygon"])]
-    if len(_g):
-        _exclude_geoms.extend(_g.to_crs(_edges_proj.crs).geometry.tolist())
-_exclude_mask = unary_union(_exclude_geoms) if _exclude_geoms else None
-print(f"    {len(_exclude_geoms):,} park/quarry/protected-area polygons")
-
-# Building footprints stand in for "somewhere people actually live" — far
-# more precise than census blocks, which in rural SLV can span both a
-# handful of homes AND a whole quarry or park under one polygon. But OSM
-# "building=yes" also tags non-residential structures (sheds, maintenance
-# buildings, ranger stations) sitting on otherwise-empty park/quarry land,
-# so a building only counts if BOTH: it's actually connected to a reachable
-# road (nearest road node is reachable, not set back further than a
-# driveway's length), AND it falls within a census block that has any
-# reported population at all.
-print("  Fetching building footprints …")
-_buildings_gdf = ox.features_from_bbox(bbox=BBOX, tags={"building": True})
-_buildings_gdf = _buildings_gdf[
-    _buildings_gdf.geometry.type.isin(["Polygon", "MultiPolygon"])].reset_index(drop=True)
-_bldg_centroids_wgs84 = _buildings_gdf.geometry.centroid
-_bldg_nearest_node = ox.distance.nearest_nodes(
-    Gu, X=_bldg_centroids_wgs84.x.tolist(), Y=_bldg_centroids_wgs84.y.tolist())
-_buildings_proj = _buildings_gdf.to_crs(_edges_proj.crs)
-_bldg_centroids_proj = _buildings_proj.geometry.centroid
-_bldg_gap_m = [
-    _bldg_centroids_proj.iloc[i].distance(_nodes_proj.loc[_bldg_nearest_node[i], "geometry"])
-    for i in range(len(_buildings_proj))
+CATCHMENT_DATA = [
+    dict(dist=0.25, file="catchment_025mi.geojson", pop=4831),
+    dict(dist=0.50, file="catchment_050mi.geojson", pop=6826),
+    dict(dist=1.00, file="catchment_100mi.geojson", pop=9190),
 ]
-_bldg_in_populated_block = [
-    _populated_mask.contains(pt) for pt in _bldg_centroids_proj
-]
-print(f"    {len(_buildings_proj):,} buildings "
-      f"({sum(_bldg_in_populated_block):,} in populated census blocks)")
-
-
-def _route_node_lengths(route_coords_list):
-    """Network distance (m) from the route to every reachable graph node."""
-    sample_pts = []
-    for coords in route_coords_list:
-        sample_pts.extend(coords[::4])
-        if coords:
-            sample_pts.append(coords[-1])
-    if not sample_pts:
-        return {}
-    xs = [lo for _, lo in sample_pts]
-    ys = [la for la, _ in sample_pts]
-    sources = set(ox.distance.nearest_nodes(Gu, X=xs, Y=ys))
-    return nx.multi_source_dijkstra_path_length(Gu, sources, weight="length")
-
-
-def _catchment_polygon(node_lengths, distance_mi):
-    cutoff_m = distance_mi * _MI_M
-    reachable = {n for n, d in node_lengths.items() if d <= cutoff_m}
-    if not reachable:
-        return None
-
-    # Buildings connected to a reachable road (within a driveway's length)
-    # AND sitting in a census block that has any reported population.
-    included = [
-        i for i in range(len(_buildings_proj))
-        if _bldg_in_populated_block[i]
-        and _bldg_nearest_node[i] in node_lengths
-        and _bldg_gap_m[i] <= MAX_BUILDING_GAP_M
-        and node_lengths[_bldg_nearest_node[i]] + _bldg_gap_m[i] <= cutoff_m
-    ]
-    if not included:
-        return None
-    bldg_mask = unary_union(
-        _buildings_proj.geometry.iloc[included].buffer(BUILDING_BUFFER_M).tolist())
-    bldg_mask = bldg_mask.buffer(CATCH_CLOSE_M).buffer(-CATCH_CLOSE_M)
-    parts = [bldg_mask]
-
-    # Only the road that actually connects to one of the included parcels —
-    # not the whole reachable network. A road passing near/through a park or
-    # quarry with no included buildings along it shouldn't get shaded just
-    # because it happens to be within the network-distance cutoff.
-    frontage_zone = bldg_mask.buffer(CATCH_BUFFER_M + 20)
-    edge_mask = (_edges_proj.index.get_level_values("u").isin(reachable) |
-                 _edges_proj.index.get_level_values("v").isin(reachable))
-    lines = [ln for ln in _edges_proj.loc[edge_mask, "geometry"]
-             if ln.intersects(frontage_zone)]
-    if lines:
-        parts.append(unary_union(lines).buffer(CATCH_BUFFER_M))
-    combined = unary_union(parts).simplify(8, preserve_topology=True)
-    if combined.is_empty:
-        return None
-    # Safety clip, as the LAST step: a home right at a populated block's
-    # edge can bleed a little into an adjacent zero-population block via
-    # the closing/frontage buffers above. Buffer the mask out generously
-    # first so real setback/road-width margin isn't cut off — this is only
-    # meant to catch land that's clearly beyond any residential parcel.
-    combined = combined.intersection(_populated_mask.buffer(60))
-    if combined.is_empty:
-        return None
-    # Explicitly drop named parks/quarries/protected areas, even where they
-    # technically overlap a populated block or sit near an included road.
-    if _exclude_mask is not None:
-        combined = combined.difference(_exclude_mask)
-        if combined.is_empty:
-            return None
-    # The clip/difference chain above can leave degenerate near-zero-area
-    # slivers at shared boundaries (floating-point noise, not real land) —
-    # drop anything under ~1,000 sqft.
-    if combined.geom_type == "MultiPolygon":
-        combined = unary_union([g for g in combined.geoms if g.area > 93])
-        if combined.is_empty:
-            return None
-    return gpd.GeoSeries([combined], crs=_edges_proj.crs).to_crs(epsg=4326).iloc[0]
-
-
-def _catchment_population(poly):
-    if poly is None or poly.is_empty:
-        return 0
-    poly_proj = gpd.GeoSeries([poly], crs=4326).to_crs(_density_proj.crs).iloc[0]
-    total_pop = 0.0
-    for geom, pop in zip(_density_proj.geometry, _density_proj["POP100"]):
-        if pop <= 0 or geom is None or geom.is_empty:
-            continue
-        inter = geom.intersection(poly_proj)
-        if inter.is_empty or geom.area <= 0:
-            continue
-        total_pop += (inter.area / geom.area) * pop
-    return round(total_pop)
-
-
-_main_loop_routes = [s["coords"] for s in SEGS] + [BRIDGE["coords"]]
-_all_routes = _main_loop_routes + [b["coords"] for b in BRANCHES]
-
-# Network distances don't depend on the cutoff, so compute each route set's
-# distances to every node once and reuse across all 3 catchment distances.
-_lengths_with = _route_node_lengths(_all_routes)
-_lengths_without = _route_node_lengths(_main_loop_routes)
-
-CATCHMENT_DATA = []
-for _dist in CATCH_DISTANCES:
-    print(f"  {_dist:.2f} mi …")
-    _poly_with = _catchment_polygon(_lengths_with, _dist)
-    _poly_without = _catchment_polygon(_lengths_without, _dist)
-    _pop_with = _catchment_population(_poly_with)
-    _pop_without = _catchment_population(_poly_without)
-    print(f"    branches on:  ~{_pop_with:,} residents")
-    print(f"    branches off: ~{_pop_without:,} residents")
-    CATCHMENT_DATA.append(dict(
-        dist=_dist,
-        geo_with=(json.loads(gpd.GeoSeries([_poly_with], crs=4326).to_json())
-                  if _poly_with is not None else None),
-        geo_without=(json.loads(gpd.GeoSeries([_poly_without], crs=4326).to_json())
-                     if _poly_without is not None else None),
-        pop_with=_pop_with, pop_without=_pop_without))
 
 # ── Print segment table ───────────────────────────────────────────────────────
 total = sum(mi(s["coords"]) for s in SEGS)
@@ -1111,69 +936,49 @@ folium.GeoJson(
 ).add_to(density_layer)
 density_layer.add_to(m)
 
-# Road-network catchment rings — shape/population depend on whether the
-# "Branch proposals" layer is toggled on or off (see CATCHMENT_DATA, computed
-# above). Each ring is one FeatureGroup/checkbox; a small injected script
-# swaps its GeoJSON data and legend text when the branch layer is toggled.
-CATCHMENT_COLOR = "#6A3D9A"  # same color for all 3 rings; only extent differs
+# Road-network catchment rings — static, one FeatureGroup/checkbox per
+# distance, population baked into both the checkbox label and a small
+# legend box shown while that ring is checked (matching the live site).
+CATCHMENT_COLORS = {0.25: "#3182BD", 0.50: "#E6550D", 1.00: "#6A3D9A"}
 _catch_specs = []
 for cd in CATCHMENT_DATA:
-    dist, color = cd["dist"], CATCHMENT_COLOR
-    label = f"{dist:.2f} mi road catchment"
+    dist, pop, color = cd["dist"], cd["pop"], CATCHMENT_COLORS[cd["dist"]]
+    label = f"{dist:.2f} mi road catchment (~{pop:,} residents)"
     fg = folium.FeatureGroup(name=label, show=False)
-    # Seed with a single throwaway point feature (never actually shown — the
-    # injected toggle script clears and repopulates via addData() on load)
-    # rather than a truly empty FeatureCollection. Folium bakes style_function
-    # into a per-feature-id JS switch statement at *construction* time; with
-    # zero features present, that switch has no cases and its `default:`
-    # returns nothing, so anything added later via addData() renders with
-    # Leaflet's plain default style instead of our custom color/dash. One
-    # feature is enough for folium to compute a real default-case style,
-    # which then correctly applies to all real features added afterward —
-    # without duplicating the (large) polygon data here too.
-    gj = folium.GeoJson(
-        {"type": "FeatureCollection", "features": [
-            {"type": "Feature", "properties": {}, "geometry": {"type": "Point", "coordinates": [0, 0]}},
-        ]},
+    folium.GeoJson(
+        _load_geojson(cd["file"]),
         style_function=lambda f, col=color: {
             "fillColor": col, "fillOpacity": 0.25, "color": col,
             "weight": 2, "dashArray": "6 4", "opacity": 0.85,
         },
-    )
-    gj.add_to(fg)
+    ).add_to(fg)
     fg.add_to(m)
-    _slug = str(dist).replace(".", "")
-    _catch_specs.append(dict(
-        legend_id=f"catch-legend-{_slug}",       # HTML element id (hyphens OK)
-        legend_var=f"catchLegend{_slug}",        # JS variable name (no hyphens)
-        label=label, color=color, dist=dist,
-        gj_var=gj.get_name(), fg_var=fg.get_name(),
-        data_with=cd["geo_with"], data_without=cd["geo_without"],
-        pop_with=cd["pop_with"], pop_without=cd["pop_without"]))
+    _catch_specs.append(dict(fg_var=fg.get_name(), dist=dist, pop=pop, color=color))
 
-_catch_legend_setup = "\n".join(f"""
-  var {c['legend_var']} = L.control({{position: 'bottomright'}});
-  {c['legend_var']}.onAdd = function() {{
-    var div = L.DomUtil.create('div', 'density-legend');
-    div.innerHTML =
-      '<b style="font-size:11px;">{c['label']}</b>' +
-      '<div style="margin-top:4px;font-size:11px;">' +
-      '  <span style="display:inline-block;width:14px;height:14px;background:{c['color']}33;' +
-      '  border:1.5px dashed {c['color']};vertical-align:middle;margin-right:5px;"></span>' +
-      '  Area within {c['dist']:.2f} mi by road' +
-      '</div>' +
-      '<div id="{c['legend_id']}-pop" style="margin-top:3px;font-size:12px;font-weight:bold;color:{c['color']};"></div>' +
-      '<div style="font-size:9px;color:#888;margin-top:2px;">2020 Census, area-weighted · depends on Branch proposals toggle</div>';
-    return div;
-  }};""" for c in _catch_specs)
+_catch_legend_js = "\n".join(f"""
+  (function() {{
+    var legend = L.control({{position: 'bottomright'}});
+    legend.onAdd = function() {{
+      var div = L.DomUtil.create('div', 'density-legend');
+      div.innerHTML =
+        '<b style="font-size:11px;">{c['dist']:.2f} mi road catchment</b>' +
+        '<div style="margin-top:4px;font-size:11px;">' +
+        '  <span style="display:inline-block;width:14px;height:14px;background:{c['color']}33;' +
+        '  border:1.5px dashed {c['color']};vertical-align:middle;margin-right:5px;"></span>' +
+        '  Area within {c['dist']:.2f} mi by road' +
+        '</div>' +
+        '<div style="margin-top:3px;font-size:12px;font-weight:bold;color:{c['color']};">' +
+        '  ~{c['pop']:,} residents' +
+        '</div>' +
+        '<div style="font-size:9px;color:#888;margin-top:2px;">2020 Census, area-weighted</div>';
+      return div;
+    }};
+    var fg = window['{c['fg_var']}'];
+    leafletMap.on('overlayadd', function(e) {{ if (e.layer === fg) legend.addTo(leafletMap); }});
+    leafletMap.on('overlayremove', function(e) {{ if (e.layer === fg) legend.remove(); }});
+  }})();""" for c in _catch_specs)
 
-_catch_rings_json = json.dumps([
-    {k: c[k] for k in ("gj_var", "fg_var", "legend_id", "data_with",
-                       "data_without", "pop_with", "pop_without")}
-    for c in _catch_specs
-])
-
-catch_toggle_js = f"""
+catch_legend_js = f"""
 <style>
 .density-legend {{
   background: white; padding: 8px 10px; border-radius: 6px;
@@ -1184,55 +989,14 @@ catch_toggle_js = f"""
 <script>
 window.addEventListener('load', function() {{
   // Deferred to window 'load': this <script> tag is emitted before folium's
-  // own map-building script (which defines map_XXX / geo_json_XXX / etc. as
-  // globals), so referencing them any earlier would hit undefined and throw.
-  var leafletMap  = window['{m.get_name()}'];
-  var branchLayer = window['{branch_layer.get_name()}'];
-  var rings = {_catch_rings_json};
-  {_catch_legend_setup}
-  var legends = {{ {",".join(f'"{c["legend_id"]}": {c["legend_var"]}' for c in _catch_specs)} }};
-
-  // Single source of truth for "are branches currently on?" — both the
-  // branch-layer toggle AND each ring's own toggle read this, so the
-  // population figure is always correct regardless of which order the
-  // user checks boxes in, and appears immediately (not only after the
-  // next branch toggle).
-  var branchesOn = true;  // matches branch_layer's default show=True
-
-  function fmtPop(n) {{ return '~' + n.toLocaleString() + ' residents'; }}
-
-  function updateRingPop(r) {{
-    var popEl = document.getElementById(r.legend_id + '-pop');
-    if (popEl) {{ popEl.innerHTML = fmtPop(branchesOn ? r.pop_with : r.pop_without); }}
-  }}
-
-  function applyState(withBranches) {{
-    branchesOn = withBranches;
-    rings.forEach(function(r) {{
-      var gj = window[r.gj_var];
-      var data = withBranches ? r.data_with : r.data_without;
-      if (data) {{ gj.clearLayers(); gj.addData(data); }}
-      updateRingPop(r);
-    }});
-  }}
-
-  rings.forEach(function(r) {{
-    var fg = window[r.fg_var];
-    var legend = legends[r.legend_id];
-    leafletMap.on('overlayadd', function(e) {{
-      if (e.layer === fg) {{ legend.addTo(leafletMap); updateRingPop(r); }}
-    }});
-    leafletMap.on('overlayremove', function(e) {{ if (e.layer === fg) legend.remove(); }});
-  }});
-
-  leafletMap.on('overlayadd', function(e) {{ if (e.layer === branchLayer) applyState(true); }});
-  leafletMap.on('overlayremove', function(e) {{ if (e.layer === branchLayer) applyState(false); }});
-
-  applyState(true);  // seed all rings' data/labels before any are shown
+  // own map-building script (which defines map_XXX as a global), so
+  // referencing it any earlier would hit undefined and throw.
+  var leafletMap = window['{m.get_name()}'];
+  {_catch_legend_js}
 }});
 </script>
 """
-m.get_root().html.add_child(folium.Element(catch_toggle_js))
+m.get_root().html.add_child(folium.Element(catch_legend_js))
 
 Fullscreen().add_to(m)
 MeasureControl(position="topright", primary_length_unit="miles",
