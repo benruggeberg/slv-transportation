@@ -809,17 +809,23 @@ sidebar_html = f"""
   if (window.innerWidth < 600) {{ collapse(); }}
   btn.addEventListener('click', function() {{ sb.dataset.c === '1' ? expand() : collapse(); }});
 
-  // Map dot that tracks elevation profile hover
+  // Map dot that tracks elevation profile hover. Deferred to window 'load':
+  // this <script> tag is emitted before folium's own map-building script
+  // (which defines map_XXX as a global), so window['{map_var}'] would still
+  // be undefined at parse time — the try/catch below was silently eating
+  // that failure every time, so the dot never actually appeared.
   var coords = {coords_js};
   var hoverDot = null;
-  try {{
-    var leafletMap = window['{map_var}'];
-    hoverDot = L.circleMarker([0, 0], {{
-      radius: 8, color: '#fff', weight: 2.5,
-      fillColor: '#2980B9', fillOpacity: 0, opacity: 0,
-      interactive: false
-    }}).addTo(leafletMap);
-  }} catch(e) {{ console.warn('Hover dot init failed:', e); }}
+  window.addEventListener('load', function() {{
+    try {{
+      var leafletMap = window['{map_var}'];
+      hoverDot = L.circleMarker([0, 0], {{
+        radius: 8, color: '#fff', weight: 2.5,
+        fillColor: '#2980B9', fillOpacity: 0, opacity: 0,
+        interactive: false
+      }}).addTo(leafletMap);
+    }} catch(e) {{ console.warn('Hover dot init failed:', e); }}
+  }});
 
   function showDot(idx) {{
     if (!hoverDot) return;
