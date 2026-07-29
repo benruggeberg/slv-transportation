@@ -484,65 +484,151 @@ BRANCHES = [
 print("\nComputing road-network catchment overlays …")
 _MI_M = 1609.34
 CATCH_DISTANCES = [0.25, 0.50, 1.00]
-CATCH_BUFFER_M = 45  # half-width (m) of the road-network buffer swath
-CATCH_CLOSE_M = 110  # morphological-closing radius: merges small gaps/slivers
-                      # between nearby-but-not-touching buffered road swaths
+CATCH_BUFFER_M = 45   # half-width (m) of the road buffer ribbon itself
+CATCH_CLOSE_M = 70    # morphological-closing radius: merges same-neighborhood
+                       # buildings/road segments into one contiguous shape
+BUILDING_BUFFER_M = 35  # parcel-ish buffer around each building footprint
+MAX_BUILDING_GAP_M = 120  # ignore buildings set back further than this from
+                           # the nearest road node (driveways, not "connected")
 
 _Gu_proj = ox.projection.project_graph(Gu)
-_, _edges_proj = ox.convert.graph_to_gdfs(_Gu_proj)
+_nodes_proj, _edges_proj = ox.convert.graph_to_gdfs(_Gu_proj)
 
 _density_gdf = gpd.read_file(os.path.join(
     os.path.dirname(os.path.abspath(__file__)), "data", "density_blocks.geojson"))
 _density_proj = _density_gdf.to_crs(_edges_proj.crs)
 
-# Mask of populated census blocks only — the road-network buffer alone
-# includes plenty of land nobody lives on (quarries, state-park land, etc.);
-# clipping to this excludes those from the catchment shape entirely rather
-# than just leaving them uncounted in the population figure.
+# Mask of populated census blocks (POP100 > 0) — used below as a filter on
+# which buildings count, not as the catchment shape itself.
 _populated_mask = unary_union([
     geom for geom, pop in zip(_density_proj.geometry, _density_proj["POP100"])
     if pop and pop > 0 and geom is not None and not geom.is_empty
 ])
 
+# Explicitly named parks/quarries/protected areas to subtract at the end.
+# Census-block and building heuristics alone can't cleanly separate these:
+# a park boundary can overlap a census block whose actual residents live
+# elsewhere in that same (large, oddly-shaped) block, so population/building
+# proxies alone still leak a park's own area in. Deliberately excludes
+# landuse=forest, since large stretches of genuinely lived-in SLV are
+# wooded and would wrongly disappear too.
+print("  Fetching parks/quarries/protected areas to exclude …")
+_exclude_geoms = []
+for tags in ({"leisure": ["park", "nature_reserve"]},
+             {"landuse": "quarry"},
+             {"boundary": "protected_area"}):
+    try:
+        _g = ox.features_from_bbox(bbox=BBOX, tags=tags)
+    except Exception:
+        continue
+    _g = _g[_g.geometry.type.isin(["Polygon", "MultiPolygon"])]
+    if len(_g):
+        _exclude_geoms.extend(_g.to_crs(_edges_proj.crs).geometry.tolist())
+_exclude_mask = unary_union(_exclude_geoms) if _exclude_geoms else None
+print(f"    {len(_exclude_geoms):,} park/quarry/protected-area polygons")
 
-def _reachable_nodes(route_coords_list, cutoff_m):
+# Building footprints stand in for "somewhere people actually live" — far
+# more precise than census blocks, which in rural SLV can span both a
+# handful of homes AND a whole quarry or park under one polygon. But OSM
+# "building=yes" also tags non-residential structures (sheds, maintenance
+# buildings, ranger stations) sitting on otherwise-empty park/quarry land,
+# so a building only counts if BOTH: it's actually connected to a reachable
+# road (nearest road node is reachable, not set back further than a
+# driveway's length), AND it falls within a census block that has any
+# reported population at all.
+print("  Fetching building footprints …")
+_buildings_gdf = ox.features_from_bbox(bbox=BBOX, tags={"building": True})
+_buildings_gdf = _buildings_gdf[
+    _buildings_gdf.geometry.type.isin(["Polygon", "MultiPolygon"])].reset_index(drop=True)
+_bldg_centroids_wgs84 = _buildings_gdf.geometry.centroid
+_bldg_nearest_node = ox.distance.nearest_nodes(
+    Gu, X=_bldg_centroids_wgs84.x.tolist(), Y=_bldg_centroids_wgs84.y.tolist())
+_buildings_proj = _buildings_gdf.to_crs(_edges_proj.crs)
+_bldg_centroids_proj = _buildings_proj.geometry.centroid
+_bldg_gap_m = [
+    _bldg_centroids_proj.iloc[i].distance(_nodes_proj.loc[_bldg_nearest_node[i], "geometry"])
+    for i in range(len(_buildings_proj))
+]
+_bldg_in_populated_block = [
+    _populated_mask.contains(pt) for pt in _bldg_centroids_proj
+]
+print(f"    {len(_buildings_proj):,} buildings "
+      f"({sum(_bldg_in_populated_block):,} in populated census blocks)")
+
+
+def _route_node_lengths(route_coords_list):
+    """Network distance (m) from the route to every reachable graph node."""
     sample_pts = []
     for coords in route_coords_list:
         sample_pts.extend(coords[::4])
         if coords:
             sample_pts.append(coords[-1])
     if not sample_pts:
-        return set()
+        return {}
     xs = [lo for _, lo in sample_pts]
     ys = [la for la, _ in sample_pts]
     sources = set(ox.distance.nearest_nodes(Gu, X=xs, Y=ys))
-    return set(nx.multi_source_dijkstra_path_length(
-        Gu, sources, cutoff=cutoff_m, weight="length"))
+    return nx.multi_source_dijkstra_path_length(Gu, sources, weight="length")
 
 
-def _catchment_polygon(route_coords_list, distance_mi):
-    reachable = _reachable_nodes(route_coords_list, distance_mi * _MI_M)
+def _catchment_polygon(node_lengths, distance_mi):
+    cutoff_m = distance_mi * _MI_M
+    reachable = {n for n, d in node_lengths.items() if d <= cutoff_m}
     if not reachable:
         return None
-    mask = (_edges_proj.index.get_level_values("u").isin(reachable) |
-            _edges_proj.index.get_level_values("v").isin(reachable))
-    lines = _edges_proj.loc[mask, "geometry"].tolist()
-    if not lines:
+
+    # Buildings connected to a reachable road (within a driveway's length)
+    # AND sitting in a census block that has any reported population.
+    included = [
+        i for i in range(len(_buildings_proj))
+        if _bldg_in_populated_block[i]
+        and _bldg_nearest_node[i] in node_lengths
+        and _bldg_gap_m[i] <= MAX_BUILDING_GAP_M
+        and node_lengths[_bldg_nearest_node[i]] + _bldg_gap_m[i] <= cutoff_m
+    ]
+    if not included:
         return None
-    swath = unary_union(lines).buffer(CATCH_BUFFER_M)
-    # Morphological closing (dilate then erode) fuses small gaps/triangular
-    # slivers between adjacent-but-not-quite-touching road swaths into one
-    # contiguous shape, instead of a patchwork of near-misses.
-    swath = swath.buffer(CATCH_CLOSE_M).buffer(-CATCH_CLOSE_M)
-    swath = swath.simplify(8, preserve_topology=True)
-    # Clip to populated blocks only, as the LAST step — reachable-by-road
-    # isn't the same as lived-in (quarries, park/forest land, etc. shouldn't
-    # be shaded). Doing this after simplify() means the simplification
-    # tolerance can't nudge the boundary back out past the block edge.
-    swath = swath.intersection(_populated_mask)
-    if swath.is_empty:
+    bldg_mask = unary_union(
+        _buildings_proj.geometry.iloc[included].buffer(BUILDING_BUFFER_M).tolist())
+    bldg_mask = bldg_mask.buffer(CATCH_CLOSE_M).buffer(-CATCH_CLOSE_M)
+    parts = [bldg_mask]
+
+    # Only the road that actually connects to one of the included parcels —
+    # not the whole reachable network. A road passing near/through a park or
+    # quarry with no included buildings along it shouldn't get shaded just
+    # because it happens to be within the network-distance cutoff.
+    frontage_zone = bldg_mask.buffer(CATCH_BUFFER_M + 20)
+    edge_mask = (_edges_proj.index.get_level_values("u").isin(reachable) |
+                 _edges_proj.index.get_level_values("v").isin(reachable))
+    lines = [ln for ln in _edges_proj.loc[edge_mask, "geometry"]
+             if ln.intersects(frontage_zone)]
+    if lines:
+        parts.append(unary_union(lines).buffer(CATCH_BUFFER_M))
+    combined = unary_union(parts).simplify(8, preserve_topology=True)
+    if combined.is_empty:
         return None
-    return gpd.GeoSeries([swath], crs=_edges_proj.crs).to_crs(epsg=4326).iloc[0]
+    # Safety clip, as the LAST step: a home right at a populated block's
+    # edge can bleed a little into an adjacent zero-population block via
+    # the closing/frontage buffers above. Buffer the mask out generously
+    # first so real setback/road-width margin isn't cut off — this is only
+    # meant to catch land that's clearly beyond any residential parcel.
+    combined = combined.intersection(_populated_mask.buffer(60))
+    if combined.is_empty:
+        return None
+    # Explicitly drop named parks/quarries/protected areas, even where they
+    # technically overlap a populated block or sit near an included road.
+    if _exclude_mask is not None:
+        combined = combined.difference(_exclude_mask)
+        if combined.is_empty:
+            return None
+    # The clip/difference chain above can leave degenerate near-zero-area
+    # slivers at shared boundaries (floating-point noise, not real land) —
+    # drop anything under ~1,000 sqft.
+    if combined.geom_type == "MultiPolygon":
+        combined = unary_union([g for g in combined.geoms if g.area > 93])
+        if combined.is_empty:
+            return None
+    return gpd.GeoSeries([combined], crs=_edges_proj.crs).to_crs(epsg=4326).iloc[0]
 
 
 def _catchment_population(poly):
@@ -563,11 +649,16 @@ def _catchment_population(poly):
 _main_loop_routes = [s["coords"] for s in SEGS] + [BRIDGE["coords"]]
 _all_routes = _main_loop_routes + [b["coords"] for b in BRANCHES]
 
+# Network distances don't depend on the cutoff, so compute each route set's
+# distances to every node once and reuse across all 3 catchment distances.
+_lengths_with = _route_node_lengths(_all_routes)
+_lengths_without = _route_node_lengths(_main_loop_routes)
+
 CATCHMENT_DATA = []
 for _dist in CATCH_DISTANCES:
     print(f"  {_dist:.2f} mi …")
-    _poly_with = _catchment_polygon(_all_routes, _dist)
-    _poly_without = _catchment_polygon(_main_loop_routes, _dist)
+    _poly_with = _catchment_polygon(_lengths_with, _dist)
+    _poly_without = _catchment_polygon(_lengths_without, _dist)
     _pop_with = _catchment_population(_poly_with)
     _pop_without = _catchment_population(_poly_without)
     print(f"    branches on:  ~{_pop_with:,} residents")
