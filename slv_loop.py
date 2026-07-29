@@ -873,6 +873,14 @@ sidebar_html = f"""
     }},
     options: {{
       animation: false,
+      // Chart.js's general hover detection (which drives onHover / the map
+      // dot) is a SEPARATE setting from plugins.tooltip.mode below (which
+      // only affects the tooltip's own hit-testing) — without this, hover
+      // defaults to mode:'nearest', intersect:true, so with pointRadius:0
+      // (invisible points) onHover only ever fired when the cursor landed
+      // essentially exactly on a vertex. That's why the dot appeared to
+      // show up randomly: it only fired at those exact pixels, nowhere else.
+      interaction: {{ mode: 'index', intersect: false }},
       onHover: function(event, activeEls) {{
         if (activeEls.length) {{ showDot(activeEls[0].index); }}
         else {{ hideDot(); }}
