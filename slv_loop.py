@@ -1033,6 +1033,12 @@ MeasureControl(position="topright", primary_length_unit="miles",
                secondary_length_unit="kilometers").add_to(m)
 folium.LayerControl(position="topright").add_to(m)
 
+# ── Analytics (GoatCounter — privacy-friendly, no cookies) ───────────────────
+m.get_root().header.add_child(folium.Element(
+    '<script data-goatcounter="https://ruggedbench.goatcounter.com/count" '
+    'async src="//gc.zgo.at/count.js"></script>'
+))
+
 m.save("slv_loop_map.html")
 print("  → slv_loop_map.html")
 print(f"\n✓  Done  —  {total_loop:.1f} mi loop, {len(SEGS)} segments + bridge, "
