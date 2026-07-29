@@ -826,7 +826,16 @@ sidebar_html = f"""
   window.addEventListener('load', function() {{
     try {{
       var leafletMap = window['{map_var}'];
+      // L.circleMarker renders in the 'overlayPane' (z-index 400), while
+      // L.Marker icons (the numbered segment badges, star destinations)
+      // render in 'markerPane' (z-index 600) — always on top regardless of
+      // add order. Without its own higher pane, the dot would render behind
+      // any marker it passes near, making it look like it randomly
+      // disappears depending on where along the route you're hovering.
+      leafletMap.createPane('hoverDotPane');
+      leafletMap.getPane('hoverDotPane').style.zIndex = 650;
       hoverDot = L.circleMarker([0, 0], {{
+        pane: 'hoverDotPane',
         radius: 8, color: '#fff', weight: 2.5,
         fillColor: '#2980B9', fillOpacity: 0, opacity: 0,
         interactive: false
