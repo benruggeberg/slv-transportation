@@ -642,19 +642,27 @@ branch_layer.add_to(m)
 
 
 def fetch_elevations(pts):
-    """Batch-fetch elevations (meters) from Open-Elevation API."""
-    locations = [{"latitude": la, "longitude": lo} for la, lo in pts]
+    """Fetch elevations (feet) from the USGS Elevation Point Query Service.
+
+    Switched from the Open-Elevation public API, which proved unreliable
+    (repeated connection timeouts / 504s) — USGS EPQS is government-run,
+    needs no API key, and covers the US (fine for this project). It only
+    takes one point per request, so this fetches sequentially.
+    """
     elevs = []
-    for i in range(0, len(locations), 100):
-        chunk = locations[i:i+100]
-        try:
-            r = _req.post("https://api.open-elevation.com/api/v1/lookup",
-                          json={"locations": chunk}, timeout=30)
-            for res in r.json()["results"]:
-                elevs.append(res["elevation"])
-        except Exception as e:
-            print(f"  ⚠  elevation fetch error: {e}")
-            elevs.extend([0] * len(chunk))
+    for la, lo in pts:
+        value = None
+        for attempt in range(3):
+            try:
+                r = _req.get("https://epqs.nationalmap.gov/v1/json",
+                            params={"x": lo, "y": la, "units": "Feet", "wkid": 4326},
+                            timeout=15)
+                value = float(r.json()["value"])
+                break
+            except Exception as e:
+                if attempt == 2:
+                    print(f"  ⚠  elevation fetch error at ({la:.4f},{lo:.4f}): {e}")
+        elevs.append(value if value is not None and value > -1000 else 0)
     return elevs
 
 
@@ -699,8 +707,7 @@ for (la1, lo1), (la2, lo2) in zip(sampled[:-1], sampled[1:]):
     cum_mi.append(cum_mi[-1] + mi([(la1, lo1), (la2, lo2)]))
 
 print(f"  Fetching elevations for {len(sampled)} sample points …")
-elevs_m = fetch_elevations(sampled)
-elevs_ft = [e * 3.28084 for e in elevs_m]
+elevs_ft = fetch_elevations(sampled)
 
 elevs_smooth = smooth_list(elevs_ft, window=9)
 baseline = elevs_smooth[0]
